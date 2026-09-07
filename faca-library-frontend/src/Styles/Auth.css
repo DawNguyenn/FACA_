@@ -1,0 +1,636 @@
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f4f6f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 32px 28px;
+  box-sizing: border-box;
+  /* Thêm transition cho chiều cao card khi số lượng input thay đổi */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #fff0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px auto;
+  transition: transform 0.3s ease;
+}
+
+.auth-card:hover .auth-icon-badge {
+  transform: scale(1.05);
+}
+
+.auth-title {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.auth-subtitle {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #666666;
+  font-weight: 500;
+}
+
+.auth-company-tag {
+  display: inline-block;
+  background-color: #f0f0f0;
+  color: #c00000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+/* ==========================================
+   TAB SWITCHER & TRANSITION
+   ========================================== */
+.auth-tab-container {
+  display: flex;
+  border-bottom: 2px solid #eeeeee;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 12px 0;
+  border: none;
+  background-color: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: #888888;
+  cursor: pointer;
+  /* Chuyển màu và đường gạch chân mượt hơn */
+  transition: color 0.3s ease, border-color 0.3s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.auth-tab-btn:hover {
+  color: #c00000;
+}
+
+.auth-tab-btn.active {
+  color: #c00000;
+  border-bottom: 2px solid #c00000;
+}
+
+/* ==========================================
+   ANIMATION DÀNH CHO FORM KHI HIỂN THỊ
+   ========================================== */
+.auth-form-container {
+  display: flex;
+  flex-direction: column;
+  /* Animation fade-in & slide-up nhẹ */
+  animation: fadeInSlide 0.35s ease-in-out forwards;
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-ms-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  background-color: #2f2f2f;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.auth-ms-btn:hover {
+  background-color: #1f1f1f;
+}
+
+.auth-ms-btn:active {
+  transform: scale(0.99);
+}
+
+.auth-ms-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.auth-divider-container {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+}
+
+.auth-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: #eeeeee;
+}
+
+.auth-divider-text {
+  padding: 0 10px;
+  font-size: 11px;
+  color: #999999;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 12px;
+  transition: color 0.2s ease;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  /* Thêm hiệu ứng hover/focus ô input */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-input:focus {
+  border-color: #c00000;
+  box-shadow: 0 0 0 3px rgba(192, 0, 0, 0.1);
+}
+
+.auth-submit-btn {
+  padding: 11px;
+  background-color: #c00000;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.auth-submit-btn:hover {
+  background-color: #a00000;
+  box-shadow: 0 4px 12px rgba(192, 0, 0, 0.25);
+}
+
+.auth-submit-btn:active {
+  transform: scale(0.98);
+}
+
+.auth-submit-btn:disabled {
+  background-color: #e0e0e0;
+  color: #999999;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Thông báo hiệu ứng mượt */
+.auth-error-message,
+.auth-success-message {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 16px;
+  animation: fadeInSlide 0.3s ease-in-out forwards;
+}
+
+.auth-error-message {
+  background-color: #fff3f3;
+  color: #d9534f;
+  border: 1px solid #ffcdd2;
+}
+
+.auth-success-message {
+  background-color: #eafaf1;
+  color: #27ae60;
+  border: 1px solid #c8e6c9;
+}
+
+.auth-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+  font-size: 12px;
+  color: #888888;
+}
+/* Container Tổng CHIA ĐÔI */
+.auth-split-wrapper {
+    display: flex;
+    min-height: 100vh;
+    width: 100vw;
+    background-color: #f4f6f9;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+}
+
+/* ================= PANEL TRÁI (Hero Background & Text Overlay) ================= */
+.auth-hero-panel {
+    flex: 1.2;
+    background-image: url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    padding: 3.5rem 4.5rem;
+    position: relative;
+    box-shadow: 5px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Lớp phủ mờ giúp chữ đọc rõ nét hơn */
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(165, 0, 52, 0.88) 0%, rgba(15, 15, 20, 0.92) 100%);
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: center;
+}
+
+.hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 2rem;
+}
+
+.hero-brand h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color : #ffffff;
+}
+
+.hero-brand p {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 1.2rem;
+    color : #ffffff;
+}
+
+.hero-description {
+    font-size: 0.98rem;
+    line-height: 1.6;
+    opacity: 0.9;
+    margin-bottom: 2.5rem;
+    max-width: 520px;
+}
+
+.hero-features {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 12px 18px;
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    font-size: 0.92rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.feature-icon {
+    color: #ff99b3;
+    flex-shrink: 0;
+}
+
+.hero-footer-note {
+    font-size: 0.8rem;
+    opacity: 0.65;
+    margin-top: auto;
+}
+
+/* ================= PANEL PHẢI (Form Card) ================= */
+.auth-form-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 430px;
+    padding: 2.5rem 2rem;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth-icon-badge {
+    width: 56px;
+    height: 56px;
+    background: #fff0f3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.8rem;
+}
+
+.auth-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 4px;
+}
+
+.auth-company-tag {
+    font-size: 0.82rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Tab Switcher */
+.auth-tab-container {
+    display: flex;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 1.5rem;
+}
+
+.auth-tab-btn {
+    flex: 1;
+    padding: 10px 0;
+    background: none;
+    border: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.auth-tab-btn.active {
+    color: #c00000;
+    border-bottom-color: #c00000;
+}
+
+/* Form Controls */
+.auth-form-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-ms-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    background-color: #2f2f2f;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.auth-ms-btn:hover {
+    background-color: #1a1a1a;
+}
+
+.auth-ms-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.auth-divider-container {
+    display: flex;
+    align-items: center;
+    margin: 1.2rem 0;
+}
+
+.auth-divider-line {
+    flex: 1;
+    height: 1px;
+    background-color: #e5e7eb;
+}
+
+.auth-divider-text {
+    padding: 0 10px;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.auth-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.auth-input-icon {
+    position: absolute;
+    left: 12px;
+    pointer-events: none;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 11px 12px 11px 38px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.auth-input:focus {
+    border-color: #c00000;
+}
+
+.auth-submit-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #c00000;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 0.5rem;
+}
+
+.auth-submit-btn:hover {
+    background-color: #9e0000;
+}
+
+.auth-submit-btn:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Thông báo lỗi & thành công */
+.auth-error-message,
+.auth-success-message {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.auth-error-message {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+    border: 1px solid #fbd5d5;
+}
+
+.auth-success-message {
+    background-color: #f3faf7;
+    color: #03543f;
+    border: 1px solid #def7ec;
+}
+
+.auth-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1.8rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .auth-hero-panel {
+        display: none;
+    }
+    .auth-split-wrapper {
+        justify-content: center;
+        align-items: center;
+    }
+}
+/* Khung bao ngoài mỗi ô input */
+.auth-field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Kiểu viền đỏ khi ô nhập bị lỗi */
+.auth-input-group.input-has-error .auth-input {
+    border-color: #c00000;
+    background-color: #fff8f8;
+}
+
+.auth-input-group.input-has-error .auth-input:focus {
+    box-shadow: 0 0 0 3px rgba(192, 0, 0, 0.15);
+}
+
+/* Dòng chữ báo lỗi ngay bên dưới ô nhập */
+.custom-field-error {
+    font-size: 0.78rem;
+    color: #c00000;
+    font-weight: 500;
+    margin-left: 2px;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-3px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

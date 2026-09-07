@@ -1,0 +1,86 @@
+/* Tailwind CSS (v4) — utility framework */
+@import "tailwindcss";
+
+/* ==========================================================
+   GLOBAL FONT CONFIGURATION — FACA & Inventory Library
+   ========================================================== */
+
+:root {
+  /* Font chính toàn hệ thống */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text: #4b5563;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --accent: #aa3bff;
+}
+
+/* Áp dụng font chính + box-sizing cho MỌI phần tử */
+* {
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Làm mịn chữ, chống nhòe dấu tiếng Việt */
+body,
+input,
+button,
+select,
+textarea {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* ==========================================================
+   TIÊU ĐỀ & TÊN NGƯỜI DÙNG — nét đậm, sắc nét, tương phản cao
+   ========================================================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 {
+  font-weight: 800;
+}
+
+p {
+  margin: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+}

@@ -1,0 +1,83 @@
+.main-footer {
+    background-color: #0f172a;
+    color: #9ca3af;
+    border-top: 1px solid #1f2937;
+    margin-top: auto;
+    padding: 1.5rem 0;
+    font-size: 0.85rem;
+    /* Font chính: Inter — rõ nét, chuẩn tiếng Việt */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.footer-container {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.footer-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.footer-icon {
+    color: #c00000;
+}
+
+.footer-dept {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: #6b7280;
+    letter-spacing: 0.01em;
+}
+
+.footer-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.security-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #d1d5db;
+}
+
+.copyright {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .footer-right {
+        align-items: flex-start;
+    }
+}
