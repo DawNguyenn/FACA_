@@ -58,10 +58,13 @@ const PAGE_SIZE = 8;
 // ------------------------------------------------------------------
 //  Small pure helpers
 // ------------------------------------------------------------------
-const getInitials = (name) =>
-    name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return 'U';
+    return name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+};
 
 const avatarColor = (name) => {
+    if (!name || typeof name !== 'string') return '#6B7280';
     const hash = [...name].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
     return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
 };
@@ -465,10 +468,10 @@ export default function AdminDashboard() {
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 {user.avatarUrl ? (
-                                                    <img src={user.avatarUrl} alt={user.name} className="h-9 w-9 rounded-full object-cover" />
+                                                    <img src={user.avatarUrl} alt={user.name || 'User'} className="h-9 w-9 rounded-full object-cover" />
                                                 ) : (
-                                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(user.name)}`}>
-                                                        {getInitials(user.name)}
+                                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(user.name || 'User')}`}>
+                                                        {getInitials(user.name || 'User')}
                                                     </span>
                                                 )}
                                                 <span className="text-sm font-medium text-slate-800">{user.name}</span>

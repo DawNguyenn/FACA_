@@ -1,0 +1,417 @@
+/* ================================================================
+   IssuesPage — trang Quản lý Lỗi (list + lọc danh mục)
+   ================================================================ */
+.issues-page {
+    padding: 32px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.issues-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 20px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #111827;
+}
+
+.issues-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.issues-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.issues-filter-chip:hover {
+    border-color: #c00000;
+    color: #c00000;
+}
+
+.issues-filter-chip.active {
+    background-color: #c00000;
+    border-color: #c00000;
+    color: #ffffff;
+}
+
+.issues-loading,
+.issue-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #6b7280;
+    padding: 40px 0;
+}
+
+.issues-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b7280;
+    padding: 40px 0;
+    justify-content: center;
+}
+
+.spin {
+    animation: iss-spin 1s linear infinite;
+}
+
+@keyframes iss-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.issues-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.issue-card {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    padding: 16px;
+}
+
+.issue-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.issue-card-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.issue-status {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.status-open, .status-pending { background-color: #fef3c7; color: #b45309; }
+.status-in_progress { background-color: #dbeafe; color: #1d4ed8; }
+.status-resolved, .status-closed { background-color: #d1fae5; color: #047857; }
+
+.issue-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.issue-chip {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #4b5563;
+    background-color: #f3f4f6;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.issue-card-symptom {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.issue-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+/* ================================================================
+   RoleRequestPage — Xin cấp quyền / Đổi vai trò
+   ================================================================ */
+.role-page {
+    padding: 32px 24px;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.role-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 4px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #111827;
+}
+
+.role-subtitle {
+    margin: 0 0 20px;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.role-alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-bottom: 18px;
+}
+
+.role-alert.ok { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.role-alert.err { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+.role-form {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.role-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.role-field label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #374151;
+}
+
+.role-current {
+    padding: 8px 12px;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.role-select,
+.role-textarea {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #111827;
+    font-family: inherit;
+}
+
+.role-textarea {
+    resize: vertical;
+}
+
+.role-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 20px;
+    background-color: #c00000;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.role-submit:hover:not(:disabled) { background-color: #9e0000; }
+.role-submit:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+.role-requests-section {
+    margin-top: 24px;
+}
+
+.role-requests-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.role-requests-empty {
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.role-requests-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.role-request-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.role-request-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.role-request-info strong { font-size: 0.9rem; font-weight: 700; color: #111827; }
+.role-request-info span { font-size: 0.7rem; color: #9ca3af; }
+
+.role-request-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.role-request-status.pending { background-color: #fef3c7; color: #b45309; }
+.role-request-status.approved { background-color: #d1fae5; color: #047857; }
+.role-request-status.rejected { background-color: #fee2e2; color: #b91c1c; }
+
+/* ================================================================
+   AdminRoleRequestsPage — Quản lý yêu cau cấpăquyenne (duyệt/từ chức)
+   ================================================================ */
+.admin-rr-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.admin-rr-item {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.admin-rr-main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-rr-main .role-request-info strong {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.admin-rr-role {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.admin-rr-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.admin-rr-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #c00000;
+    margin-left: 8px;
+}
+
+.admin-rr-reason {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #6b7280;
+}
+
+.admin-rr-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.admin-rr-date {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+.admin-rr-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.admin-rr-approve {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: #059669;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-rr-approve:hover { background-color: #047857; }
+
+.admin-rr-reject {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: #dc2626;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-rr-reject:hover { background-color: #b91c1c; }

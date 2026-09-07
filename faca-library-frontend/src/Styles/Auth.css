@@ -266,6 +266,7 @@
 }
 /* Container Tổng CHIA ĐÔI */
 .auth-split-wrapper {
+    position: relative; /* để LanguageSwitcher absolute góc trên phải */
     display: flex;
     min-height: 100vh;
     width: 100vw;
@@ -375,6 +376,143 @@
     font-size: 0.8rem;
     opacity: 0.65;
     margin-top: auto;
+}
+
+/* ================================================================
+   MODAL / POPUP (VD: thông báo SSO đang phát triển)
+   ================================================================ */
+.sso-modal-overlay,
+.auth-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.sso-modal-content,
+.auth-modal {
+    position: relative;
+    background-color: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    animation: auth-modal-pop 0.18s ease-out;
+}
+
+@keyframes auth-modal-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Nút đóng X góc trên bên phải */
+.sso-modal-close,
+.auth-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sso-modal-close:hover,
+.auth-modal-close:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
+/* Header: icon cảnh báo + tiêu đề */
+.sso-modal-header,
+.auth-modal-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.auth-modal-icon {
+    width: 56px;
+    height: 56px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 50%;
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.sso-modal-header h3,
+.auth-modal-title {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.01em;
+}
+
+.sso-modal-header .warning-icon {
+    color: #d97706;
+    margin-right: 8px;
+}
+
+/* Nội dung văn bản */
+.sso-modal-body,
+.auth-modal-desc {
+    margin: 0 0 20px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #4b5563;
+    word-break: break-word;
+}
+
+/* Nút hành động */
+.sso-modal-btn,
+.auth-modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 28px;
+    background-color: #c00000;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.sso-modal-btn:hover,
+.auth-modal-btn:hover {
+    background-color: #9e0000;
+}
+
+.sso-modal-btn:active,
+.auth-modal-btn:active {
+    transform: scale(0.98);
 }
 
 /* ================= PANEL PHẢI (Form Card) ================= */

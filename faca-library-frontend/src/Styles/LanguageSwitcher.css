@@ -1,0 +1,63 @@
+/* ================================================================
+   LanguageSwitcher — nhóm nút chọn ngôn ngữ (trang Auth)
+   ================================================================ */
+.lang-switcher {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    display: flex;
+    gap: 6px;
+    z-index: 20;
+}
+
+.lang-switcher-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    background-color: rgba(255, 255, 255, 0.92);
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #374151;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1;
+}
+
+.lang-switcher-btn:hover {
+    border-color: #c00000;
+    color: #c00000;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.lang-switcher-btn.active {
+    background-color: #c00000;
+    border-color: #c00000;
+    color: #ffffff;
+}
+
+.lang-switcher-flag {
+    font-size: 0.82rem;
+    line-height: 1;
+}
+
+.lang-switcher-code {
+    letter-spacing: 0.02em;
+}
+
+@media (max-width: 768px) {
+    .lang-switcher {
+        top: 10px;
+        right: 10px;
+    }
+
+    .lang-switcher-code {
+        display: none; /* chỉ còn icon cờ trên màn nhỏ */
+    }
+
+    .lang-switcher-btn {
+        padding: 5px 8px;
+    }
+}

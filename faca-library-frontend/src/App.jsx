@@ -3,6 +3,11 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Home from './pages/Home';
 import AdminDashboard from './pages/Admin/AdminDashboard';
+import ManageUsers from './pages/Admin/ManageUsers';
+import AdminRoleRequests from './pages/Admin/AdminRoleRequestsPage';
+import ProfilePage from './pages/Profile';
+import IssuesPage from './pages/IssuesPage';
+import RoleRequestPage from './pages/RoleRequestPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 
@@ -55,6 +60,66 @@ function App() {
                         <ProtectedRoute>
                             <MainLayout>
                                 <AdminDashboard />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Admin: Quản lý người dòng */}
+                <Route
+                    path="/admin/users"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <ManageUsers />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Admin: Quản lý yêu cau cấpăquyenne */}
+                <Route
+                    path="/admin/role-requests"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <AdminRoleRequests />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Trang cá nhân (Profile) */}
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <ProfilePage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Quản lý Lỗi (lọc category theo query ?category_id=) */}
+                <Route
+                    path="/issues"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <IssuesPage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Xin cấp quyền / Đổi vai trò */}
+                <Route
+                    path="/request-role"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <RoleRequestPage />
                             </MainLayout>
                         </ProtectedRoute>
                     }

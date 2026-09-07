@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, AlertCircle, Cpu, Mail, Lock, CheckCircle2, FileText, Database, AlertTriangle, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ShieldCheck, AlertCircle, Cpu, Mail, Lock, CheckCircle2, FileText, Database, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+import i18n from '../../i18n';
 import '../../Styles/Auth.css';
 
 const Login = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
@@ -26,10 +30,10 @@ const Login = () => {
     const validateForm = () => {
         const errors = {};
         if (!email.trim()) {
-            errors.email = 'Vui lòng nhập email ';
+            errors.email = t('auth.emailRequired');
         }
         if (!password) {
-            errors.password = 'Vui lòng nhập mật khẩu';
+            errors.password = t('auth.passwordRequired');
         }
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
@@ -46,7 +50,12 @@ const Login = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+            const res = await axios.post(`${API_URL}/auth/login`, {
+                email,
+                password,
+                // Gửi kèm ngôn ngữ đang chọn để backend đồng bộ cột language của user
+                language: localStorage.getItem('app_language') || i18n.language || 'vi',
+            });
             if (res.data.success) {
                 // Lưu cả token và user vào LocalStorage
                 localStorage.setItem('token', res.data.token);
@@ -57,7 +66,7 @@ const Login = () => {
             }
         } catch (err) {
             console.error("Lỗi đăng nhập email:", err);
-            setError(err.response?.data?.message || "Mật khẩu hoặc Email không chính xác.");
+            setError(err.response?.data?.message || t('auth.invalidCredentials'));
         } finally {
             setLoading(false);
         }
@@ -71,7 +80,10 @@ const Login = () => {
     };
 
     return (
+        <>
         <div className="auth-split-wrapper">
+            {/* Chuyển đổi ngôn ngữ: góc trên phải */}
+            <LanguageSwitcher />
             <div className="auth-hero-panel">
                 <div className="hero-overlay"></div>
                 <div className="hero-content">
@@ -87,21 +99,21 @@ const Login = () => {
                        FACA & Inventory <br /> Management System
                     </h1>
                     <p className="hero-description">
-                        Hệ thống tra cứu, phân tích lỗi kỹ thuật Camera Module kết hợp quản lý kho và vật tư tập trung.
+                        {t('auth.heroDescription')}
                     </p>
 
                     <div className="hero-features">
                         <div className="feature-item">
                             <Database size={20} className="feature-icon" />
-                            <span>Tra cứu thông tin và lịch sử các lỗi liên quan đến Camera Module</span>
+                            <span>{t('auth.feature1')}</span>
                         </div>
                         <div className="feature-item">
                             <FileText size={20} className="feature-icon" />
-                            <span>Quản lý danh mục kho, linh kiện và vật tư liên quan</span>
+                            <span>{t('auth.feature2')}</span>
                         </div>
                         <div className="feature-item">
                             <CheckCircle2 size={20} className="feature-icon" />
-                            <span>Theo dõi tình trạng và tổng hợp báo cáo hệ thống</span>
+                            <span>{t('auth.feature3')}</span>
                         </div>
                     </div>
 
@@ -118,13 +130,13 @@ const Login = () => {
                             <Cpu size={32} color="#c00000" />
                         </div>
                         <h1 className="auth-title">FACA Library</h1>
-                        <span className="auth-company-tag">Đăng nhập hệ thống</span>
+                        <span className="auth-company-tag">{t('auth.companyTag')}</span>
                     </div>
 
                     <div className="auth-tab-container">
-                        <button className="auth-tab-btn active">Đăng Nhập</button>
+                        <button className="auth-tab-btn active">{t('auth.tabLogin')}</button>
                         <button className="auth-tab-btn" onClick={() => navigate('/register')}>
-                            Đăng Ký
+                            {t('auth.tabRegister')}
                         </button>
                     </div>
 
@@ -143,12 +155,12 @@ const Login = () => {
                                 <path fill="#05a6f0" d="M1 12h10v10H1z"/>
                                 <path fill="#ffba08" d="M12 12h10v10H12z"/>
                             </svg>
-                            <span>Đăng nhập bằng Microsoft SSO</span>
+                            <span>{t('auth.msSso')}</span>
                         </button>
 
                         <div className="auth-divider-container">
                             <span className="auth-divider-line"></span>
-                            <span className="auth-divider-text">Hoặc dùng Email</span>
+                            <span className="auth-divider-text">{t('auth.orEmail')}</span>
                             <span className="auth-divider-line"></span>
                         </div>
 
@@ -158,7 +170,7 @@ const Login = () => {
                                     <Mail size={18} color={fieldErrors.email ? '#c00000' : '#777'} className="auth-input-icon" />
                                     <input 
                                         type="email" 
-                                        placeholder="Email" 
+                                        placeholder={t('auth.emailField')} 
                                         value={email}
                                         onChange={handleInputChange(setEmail, 'email')}
                                         className="auth-input"
@@ -172,7 +184,7 @@ const Login = () => {
                                     <Lock size={18} color={fieldErrors.password ? '#c00000' : '#777'} className="auth-input-icon" />
                                     <input 
                                         type="password" 
-                                        placeholder="Mật khẩu" 
+                                        placeholder={t('auth.passwordPlaceholder')} 
                                         value={password}
                                         onChange={handleInputChange(setPassword, 'password')}
                                         className="auth-input"
@@ -182,53 +194,55 @@ const Login = () => {
                             </div>
 
                             <button type="submit" disabled={loading} className="auth-submit-btn">
-                                {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
+                                {loading ? t('auth.processing') : t('auth.login')}
                             </button>
                         </form>
                     </div>
 
                     <div className="auth-footer">
                         <ShieldCheck size={16} color="#28a745" style={{ marginRight: 6 }} />
-                        <span>Hệ thống bảo mật nội bộ LG Innotek</span>
+                        <span>{t('auth.internalSecurity')}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Modal thông báo Microsoft SSO đang phát triển */}
-            {showMsModal && (
-                <div className="auth-modal-overlay" onClick={() => setShowMsModal(false)}>
-                    <div className="auth-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            type="button"
-                            className="auth-modal-close"
-                            aria-label="Đóng"
-                            onClick={() => setShowMsModal(false)}
-                        >
-                            <X size={20} />
-                        </button>
-
-                        <div className="auth-modal-icon">
-                            <AlertTriangle size={32} />
-                        </div>
-
-                        <h3 className="auth-modal-title">Chức năng đang được phát triển</h3>
-                        <p className="auth-modal-desc">
-                            Đăng nhập Microsoft SSO nội bộ hiện đang trong quá trình tích hợp phân quyền
-                            Azure AD với quản trị mạng công ty. Vui lòng sử dụng tài khoản Email &amp; Mật khẩu
-                            để đăng nhập.
-                        </p>
-
-                        <button
-                            type="button"
-                            className="auth-modal-btn"
-                            onClick={() => setShowMsModal(false)}
-                        >
-                            Đã hiểu
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
+
+        {/* Modal thông báo Microsoft SSO đang phát triển
+            (Render ngoài .auth-split-wrapper để không bị ảnh hưởng
+             bởi position/transform của các container cha) */}
+        {showMsModal && (
+            <div className="sso-modal-overlay auth-modal-overlay" onClick={() => setShowMsModal(false)}>
+                <div className="sso-modal-content auth-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        className="sso-modal-close auth-modal-close"
+                        aria-label="Đóng"
+                        onClick={() => setShowMsModal(false)}
+                    >
+                        ✕
+                    </button>
+
+                    <div className="auth-modal-icon">
+                        <AlertTriangle size={32} />
+                    </div>
+
+                    <h3 className="auth-modal-title">{t('auth.featureInProgress')}</h3>
+                    <p className="auth-modal-desc">
+                        {t('auth.ssoDesc')}
+                    </p>
+
+                    <button
+                        type="button"
+                        className="sso-modal-btn auth-modal-btn"
+                        onClick={() => setShowMsModal(false)}
+                    >
+                        {t('auth.understood')}
+                    </button>
+                </div>
+            </div>
+        )}
+        </>
     );
 };
 

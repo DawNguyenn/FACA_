@@ -6,7 +6,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_faca_library';
 
 // 1. Đăng ký tài khoản
 exports.register = async (req, res) => {
-    const { email, password, full_name, department } = req.body;
+    const { email, password, full_name, department, language } = req.body;
+    const VALID_LANGUAGES = ['vi', 'en', 'ko'];
 
     try {
         const pool = await poolPromise;
@@ -28,14 +29,16 @@ exports.register = async (req, res) => {
         const password_hash = await bcrypt.hash(password, salt);
 
         // Thêm user mới vào SQL Server (Mặc định role_id = 2 - Staff)
+        // Lưu ngôn ngữ người dùng chọn trên trang Đăng ký (mặc định 'vi')
         await pool.request()
             .input('email', sql.VarChar, email)
             .input('password_hash', sql.VarChar, password_hash)
             .input('full_name', sql.NVarChar, full_name)
             .input('department', sql.NVarChar, department || '')
+            .input('language', sql.VarChar, VALID_LANGUAGES.includes(language) ? language : 'vi')
             .query(`
-                INSERT INTO dbo.users (email, password_hash, full_name, department, role_id, is_active, created_at)
-                VALUES (@email, @password_hash, @full_name, @department, 2, 1, GETDATE())
+                INSERT INTO dbo.users (email, password_hash, full_name, department, language, role_id, is_active, created_at)
+                VALUES (@email, @password_hash, @full_name, @department, @language, 2, 1, GETDATE())
             `);
 
         return res.status(201).json({
@@ -62,7 +65,7 @@ exports.login = async (req, res) => {
         // Lấy thêm role_id và is_active
         const result = await pool.request()
             .input('email', sql.VarChar, email)
-            .query('SELECT user_id, email, password_hash, full_name, department, role_id, is_active FROM dbo.users WHERE email = @email');
+            .query('SELECT user_id, email, password_hash, full_name, department, language, role_id, is_active FROM dbo.users WHERE email = @email');
 
         if (result.recordset.length === 0) {
             return res.status(401).json({ 
@@ -103,6 +106,16 @@ exports.login = async (req, res) => {
             .input('user_id', sql.Int, user.user_id)
             .query('UPDATE dbo.users SET last_login_at = GETDATE() WHERE user_id = @user_id');
 
+        // Đồng bộ ngôn ngữ người dùng chọn trên trang Login (nếu hợp lệ)
+        const VALID_LANGUAGES = ['vi', 'en', 'ko'];
+        if (VALID_LANGUAGES.includes(req.body?.language)) {
+            await pool.request()
+                .input('user_id', sql.Int, user.user_id)
+                .input('language', sql.VarChar, req.body.language)
+                .query('UPDATE dbo.users SET language = @language WHERE user_id = @user_id');
+            user.language = req.body.language;
+        }
+
         // Tạo Token JWT (Bổ sung role_id)
         const token = jwt.sign(
             { 
@@ -123,7 +136,8 @@ exports.login = async (req, res) => {
                 Username: user.full_name || user.username || user.email,
                 Email: user.email,
                 RoleId: user.role_id,
-                Department: user.department
+                Department: user.department,
+                language: user.language || 'vi'
             }
         });
 
@@ -156,10 +170,14 @@ exports.getMe = async (req, res) => {
             .input('user_id', sql.Int, userId)
             .query(`
                 SELECT user_id AS UserId,
+                       full_name AS full_name,
                        COALESCE(NULLIF(full_name, ''), email) AS Username,
                        email AS Email,
                        role_id AS RoleId,
                        department AS Department,
+                       department AS department,
+                       avatar_url AS avatar_url,
+                       ISNULL(language, 'vi') AS language,
                        is_active
                 FROM dbo.users
                 WHERE user_id = @user_id
@@ -188,7 +206,12 @@ exports.getMe = async (req, res) => {
                 Username: user.Username,
                 Email: user.Email,
                 RoleId: user.RoleId,
-                Department: user.Department
+                Department: user.Department,
+                // Các trường đầy đủ phục vụ trang /profile
+                full_name: user.full_name,
+                department: user.department,
+                avatar_url: user.avatar_url || '',
+                language: user.language || 'vi'
             }
         });
 

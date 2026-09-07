@@ -129,6 +129,105 @@
     font-weight: 600;
 }
 
+/* ===== Dropdown Navigation Menu (Trang chủ / Quản lý Lỗi) ===== */
+.nav-dropdown {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.nav-dropdown.nav-item {
+    color: #4b5563;
+}
+
+.nav-dropdown:hover {
+    background-color: #f3f4f6;
+    color: #c00000;
+}
+
+.nav-chevron {
+    transition: transform 0.2s ease;
+    color: #9ca3af;
+}
+
+.nav-dropdown:hover .nav-chevron,
+.nav-dropdown[aria-expanded='true'] .nav-chevron {
+    transform: rotate(180deg);
+    color: #c00000;
+}
+
+.nav-dropdown[aria-expanded='true'] {
+    background-color: #f3f4f6;
+}
+
+/* Menu box nhỏ phía dưới */
+.nav-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 240px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    padding: 6px;
+    z-index: 1200;
+    animation: nav-menu-pop 0.14s ease-out;
+}
+
+@keyframes nav-menu-pop {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.nav-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #374151;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.nav-dropdown-item:hover {
+    background-color: #f3f4f6;
+}
+
+.nav-dropdown-item svg {
+    color: #c00000;
+    flex-shrink: 0;
+}
+
+.nav-dropdown-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.nav-dropdown-item:hover .nav-dropdown-label {
+    color: #c00000;
+}
+
+/* Badge yêu cầu đang chờ duyệt trong dropdown Admin */
+.nav-dropdown-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: auto;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #ffffff;
+    background-color: #c00000;
+    border-radius: 999px;
+    line-height: 1;
+}
+
 /* User Area */
 .header-user-area {
     position: relative;
@@ -159,6 +258,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .user-info-text {
@@ -229,6 +337,15 @@
 
 .popover-logout-btn:hover {
     background-color: #fef2f2;
+}
+
+/* Nút Trang cá nhân trong popover (màu xám trung tính) */
+.popover-profile-btn {
+    color: #374151;
+}
+
+.popover-profile-btn:hover {
+    background-color: #f3f4f6;
 }
 
 /* Nút Sign In khi chưa đăng nhập */

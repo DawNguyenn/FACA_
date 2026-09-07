@@ -14,14 +14,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Import các Routes
+const path = require('path');
 const issueRoutes = require('./routes/issueRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const roleRequestRoutes = require('./routes/roleRequestRoutes');
+
+// Serve ảnh đã upload (avatar...) dưới dạng file tĩnh
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Sử dụng các Routes
 app.use('/api/issues', issueRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/role-requests', roleRequestRoutes);
 
 // Route kiểm tra trạng thái Server (Health Check)
 app.get('/', (req, res) => {

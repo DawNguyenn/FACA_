@@ -1,8 +1,10 @@
-import React from 'react';
 import { ShieldCheck, Cpu } from 'lucide-react';
+import { useSmartTranslate } from '../../hooks/useSmartTranslate';
 import '../../Styles/Footer.css';
 
 const Footer = () => {
+    const { smartT } = useSmartTranslate();
+
     return (
         <footer className="main-footer">
             <div className="footer-container">
@@ -11,15 +13,17 @@ const Footer = () => {
                         <Cpu size={18} className="footer-icon" />
                         <span>FACA Library & Inventory Management System</span>
                     </div>
-                    <p className="footer-dept">Quản lý FACA & Kho Vật tư</p>
+                    {/* Chuỗi chưa có key trong i18n -> tự động dịch sang en/ko */}
+                    <p className="footer-dept">{smartT('Quản lý FACA & Kho Vật tư')}</p>
                 </div>
 
                 <div className="footer-right">
                     <div className="security-tag">
                         <ShieldCheck size={16} color="#28a745" />
-                        <span>Hệ thống Bảo mật Nội bộ LG Innotek</span>
+                        {/* Có key thủ công: auth.internalSecurity -> ưu tiên dùng bản dịch tay */}
+                        <span>{smartT('Hệ thống Bảo mật Nội bộ LG Innotek', 'auth.internalSecurity')}</span>
                     </div>
-                    <p className="copyright">© 2026 LG Innotek Vietnam Hải Phòng. All Rights Reserved.</p>
+                    <p className="copyright">{smartT('© 2026 LG Innotek Vietnam Hải Phòng. All Rights Reserved.')}</p>
                 </div>
             </div>
         </footer>

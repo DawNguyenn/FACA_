@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, AlertCircle, Cpu, Mail, Lock, User, Building, CheckCircle2, FileText, Database } from 'lucide-react';
 import axios from 'axios';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+import i18n from '../../i18n';
 import '../../Styles/Auth.css';
 
 const Register = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
@@ -26,24 +30,24 @@ const Register = () => {
         const errors = {};
 
         if (!fullName.trim()) {
-            errors.fullName = 'Vui lòng nhập họ và tên';
+            errors.fullName = t('register.fullNameRequired');
         }
 
         if (!email.trim()) {
-            errors.email = 'Vui lòng nhập email';
+            errors.email = t('register.emailRequired');
         } else if (!/\S+@\S+\.\S+/.test(email)) {
-            errors.email = 'Định dạng email không hợp lệ';
+            errors.email = t('register.emailInvalid');
         }
 
         // Regex kiểm tra: Tối thiểu 8 ký tự, ít nhất 1 chữ hoa, 1 số và 1 ký tự đặc biệt
         const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
         if (!password) {
-            errors.password = 'Vui lòng nhập mật khẩu';
+            errors.password = t('register.passwordRequired');
         } else if (password.length < 8) {
-            errors.password = 'Mật khẩu phải chứa ít nhất 8 ký tự';
+            errors.password = t('register.passwordMinLength');
         } else if (!passwordRegex.test(password)) {
-            errors.password = 'Mật khẩu phải bao gồm chữ in hoa, chữ số và ký tự đặc biệt (@$!%*?&)';
+            errors.password = t('register.passwordPattern');
         }
 
         setFieldErrors(errors);
@@ -67,11 +71,13 @@ const Register = () => {
                 email,
                 password,
                 full_name: fullName,
-                department
+                department,
+                // Gửi kèm ngôn ngữ đang chọn để backend lưu vào cột language của user mới
+                language: localStorage.getItem('app_language') || i18n.language || 'vi',
             });
 
             if (res.data.success) {
-                setSuccessMsg("Đăng ký thành công! Đang chuyển hướng về trang đăng nhập...");
+                setSuccessMsg(t('register.success'));
                 setEmail('');
                 setPassword('');
                 setFullName('');
@@ -84,7 +90,7 @@ const Register = () => {
             }
         } catch (err) {
             console.error("Lỗi đăng ký:", err);
-            setError(err.response?.data?.message || "Đăng ký thất bại. Email có thể đã tồn tại.");
+            setError(err.response?.data?.message || t('register.failed'));
         } finally {
             setLoading(false);
         }
@@ -99,6 +105,8 @@ const Register = () => {
 
     return (
         <div className="auth-split-wrapper">
+            {/* Chuyển đổi ngôn ngữ: góc trên phải */}
+            <LanguageSwitcher />
             <div className="auth-hero-panel">
                 <div className="hero-overlay"></div>
                 <div className="hero-content">
@@ -114,21 +122,21 @@ const Register = () => {
                         FACA & Inventory <br /> Management System
                     </h1>
                     <p className="hero-description">
-                        Đăng ký tài khoản nội bộ để truy cập hệ thống báo cáo và cơ sở dữ liệu phân tích lỗi chất lượng.
+                        {t('register.heroDescription')}
                     </p>
 
                     <div className="hero-features">
                         <div className="feature-item">
                             <Database size={20} className="feature-icon" />
-                            <span>Tra cứu thông tin và lịch sử các lỗi liên quan đến Camera Module</span>
+                            <span>{t('auth.feature1')}</span>
                         </div>
                         <div className="feature-item">
                             <FileText size={20} className="feature-icon" />
-                            <span>Quản lý danh mục kho, linh kiện và vật tư liên quan</span>
+                            <span>{t('auth.feature2')}</span>
                         </div>
                         <div className="feature-item">
                             <CheckCircle2 size={20} className="feature-icon" />
-                            <span>Theo dõi tình trạng và tổng hợp báo cáo hệ thống</span>
+                            <span>{t('auth.feature3')}</span>
                         </div>
                     </div>
 
@@ -145,14 +153,14 @@ const Register = () => {
                             <Cpu size={32} color="#c00000" />
                         </div>
                         <h1 className="auth-title">FACA Library</h1>
-                        <span className="auth-company-tag">Tạo tài khoản mới</span>
+                        <span className="auth-company-tag">{t('register.companyTag')}</span>
                     </div>
 
                     <div className="auth-tab-container">
                         <button className="auth-tab-btn" onClick={() => navigate('/login')}>
-                            Đăng Nhập
+                            {t('auth.tabLogin')}
                         </button>
-                        <button className="auth-tab-btn active">Đăng Ký</button>
+                        <button className="auth-tab-btn active">{t('auth.tabRegister')}</button>
                     </div>
 
                     {error && (
@@ -176,7 +184,7 @@ const Register = () => {
                                     <User size={18} color={fieldErrors.fullName ? '#c00000' : '#777'} className="auth-input-icon" />
                                     <input
                                         type="text"
-                                        placeholder="Họ và tên *"
+                                        placeholder={t('register.fullNamePlaceholder')}
                                         value={fullName}
                                         onChange={handleInputChange(setFullName, 'fullName')}
                                         className="auth-input"
@@ -190,7 +198,7 @@ const Register = () => {
                                     <Mail size={18} color={fieldErrors.email ? '#c00000' : '#777'} className="auth-input-icon" />
                                     <input
                                         type="email"
-                                        placeholder="Email*"
+                                        placeholder={t('register.emailPlaceholder')}
                                         value={email}
                                         onChange={handleInputChange(setEmail, 'email')}
                                         className="auth-input"
@@ -204,7 +212,7 @@ const Register = () => {
                                     <Building size={18} color="#777" className="auth-input-icon" />
                                     <input
                                         type="text"
-                                        placeholder="Bộ phận"
+                                        placeholder={t('register.departmentPlaceholder')}
                                         value={department}
                                         onChange={(e) => setDepartment(e.target.value)}
                                         className="auth-input"
@@ -217,7 +225,7 @@ const Register = () => {
                                     <Lock size={18} color={fieldErrors.password ? '#c00000' : '#777'} className="auth-input-icon" />
                                     <input
                                         type="password"
-                                        placeholder="Mật khẩu *"
+                                        placeholder={t('register.passwordPlaceholder')}
                                         value={password}
                                         onChange={handleInputChange(setPassword, 'password')}
                                         className="auth-input"
@@ -227,14 +235,14 @@ const Register = () => {
                             </div>
 
                             <button type="submit" disabled={loading} className="auth-submit-btn">
-                                {loading ? 'Đang xử lý...' : 'Đăng Ký'}
+                                {loading ? t('register.processing') : t('register.submit')}
                             </button>
                         </form>
                     </div>
 
                     <div className="auth-footer">
                         <ShieldCheck size={16} color="#28a745" style={{ marginRight: 6 }} />
-                        <span>Hệ thống bảo mật nội bộ LG Innotek</span>
+                        <span>{t('auth.internalSecurity')}</span>
                     </div>
                 </div>
             </div>

@@ -52,8 +52,8 @@ const Home = () => {
                 <span className="home-hero-badge">Camera Module PE Division</span>
                 <h1 className="home-hero-title">FACA & Component Library</h1>
                 <p className="home-hero-desc">
-                    Hệ thống tra cứu Failure Analysis & Corrective Action (8D / 5-Why) và
-                    kho linh kiện nội bộ — hỗ trợ phân tích, chia sẻ bài học kinh nghiệm
+                    Hệ thống tra cứu Failure Analysis & Corrective Action và
+                    kho linh kiện nội bộ - hỗ trợ phân tích, chia sẻ bài học kinh nghiệm
                     và quản lý nguồn vật tư hiệu quả cho toàn Division.
                 </p>
 
