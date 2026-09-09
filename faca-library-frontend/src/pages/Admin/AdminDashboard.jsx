@@ -55,6 +55,9 @@ const ROLE_OPTIONS = ['All', 'Admin', 'Engineer', 'QC', 'Warehouse', 'User'];
 const STATUS_OPTIONS = ['All', 'active', 'inactive', 'blocked'];
 const PAGE_SIZE = 8;
 
+// Map role_id to role name (matches backend database)
+const ROLE_NAMES = { 1: 'Admin', 2: 'Engineer', 3: 'QC', 4: 'Warehouse', 5: 'User' };
+
 // ------------------------------------------------------------------
 //  Small pure helpers
 // ------------------------------------------------------------------
@@ -212,25 +215,20 @@ export default function AdminDashboard() {
         const isEdit = userModal?.mode === 'edit';
         setSubmitting(true);
         try {
+            // Map form fields to API expected fields (snake_case)
+            const apiPayload = {
+                full_name: data.name,
+                email: data.email,
+                role_name: data.role,
+                department: data.department,
+                status: data.status,
+                avatar_url: data.avatarUrl,
+            };
             if (isEdit) {
-                await updateUser(data.id, {
-                    name: data.name,
-                    email: data.email,
-                    role: data.role,
-                    department: data.department,
-                    status: data.status,
-                    avatarUrl: data.avatarUrl,
-                });
+                await updateUser(data.id, apiPayload);
                 showNotice('success', 'Cập nhật người dùng thành công.');
             } else {
-                await createUser({
-                    name: data.name,
-                    email: data.email,
-                    role: data.role,
-                    department: data.department,
-                    status: data.status,
-                    avatarUrl: data.avatarUrl,
-                });
+                await createUser(apiPayload);
                 showNotice('success', 'Thêm người dùng mới thành công.');
             }
             setUserModal(null);
@@ -245,7 +243,8 @@ export default function AdminDashboard() {
     const handleDelete = async () => {
         setSubmitting(true);
         try {
-            await deleteUserApi(deleteTarget.id);
+            const userId = deleteTarget.user_id ?? deleteTarget.userid ?? deleteTarget.userId ?? deleteTarget.id;
+            await deleteUserApi(userId);
             showNotice('success', 'Đã xóa người dùng.');
             setDeleteTarget(null);
             await refreshUsers();
@@ -259,7 +258,8 @@ export default function AdminDashboard() {
     const handleStatusChange = async () => {
         setSubmitting(true);
         try {
-            await updateUser(statusTarget.id, { status: nextStatus(statusTarget.status) });
+            const userId = statusTarget.user_id ?? statusTarget.userid ?? statusTarget.userId ?? statusTarget.id;
+            await updateUser(userId, { status: nextStatus(statusTarget.status) });
             showNotice('success', 'Cập nhật trạng thái thành công.');
             setStatusTarget(null);
             await refreshUsers();
@@ -462,28 +462,35 @@ export default function AdminDashboard() {
                                     </tr>
                                 ))}
 
-                                {!loading && pagedUsers.map((user) => (
-                                    <tr key={user.id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3 text-sm text-slate-400">#{String(user.id).padStart(3, '0')}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                {user.avatarUrl ? (
-                                                    <img src={user.avatarUrl} alt={user.name || 'User'} className="h-9 w-9 rounded-full object-cover" />
-                                                ) : (
-                                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(user.name || 'User')}`}>
-                                                        {getInitials(user.name || 'User')}
-                                                    </span>
-                                                )}
-                                                <span className="text-sm font-medium text-slate-800">{user.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-500">{user.email}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleColor(user.role).badge}`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${roleColor(user.role).dot}`} />
-                                                {user.role}
-                                            </span>
-                                        </td>
+                                {!loading && pagedUsers.map((user) => {
+                                    // Map API fields (snake_case) to component expectations
+                                    // Backend trả key "user_id"; vẫn có fallback userid/userId/id để an toàn
+                                    const userId = user.user_id ?? user.userid ?? user.userId ?? user.id ?? 'N/A';
+                                    const fullName = user.full_name || user.name || user.fullName || 'Unknown';
+                                    const avatarUrl = user.avatar_url || user.avatarUrl || user.AvatarUrl;
+                                    const roleName = user.role_name || user.role || ROLE_NAMES[user.role_id] || user.role_id || 'User';
+                                    return (
+                                        <tr key={userId} className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 text-sm text-slate-400">#{String(userId).padStart(3, '0')}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    {avatarUrl ? (
+                                                        <img src={avatarUrl} alt={fullName} className="h-9 w-9 rounded-full object-cover" />
+                                                    ) : (
+                                                        <span className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(fullName)}`}>
+                                                            {getInitials(fullName)}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-sm font-medium text-slate-800">{fullName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-500">{user.email}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleColor(roleName).badge}`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${roleColor(roleName).dot}`} />
+                                                    {roleName}
+                                                </span>
+                                            </td>
                                         <td className="px-4 py-3 text-sm text-slate-500">
                                             <span className="inline-flex items-center gap-1.5"><Building className="h-3.5 w-3.5 text-slate-400" />{user.department}</span>
                                         </td>
@@ -494,23 +501,23 @@ export default function AdminDashboard() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-slate-500">
-                                            <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-slate-400" />{formatDate(user.createdAt)}</span>
+                                            <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-slate-400" />{formatDate(user.created_at || user.createdAt)}</span>
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <button title="Edit user" aria-label={`Edit ${user.name}`}
+                                                <button title="Edit user" aria-label={`Edit ${fullName}`}
                                                     onClick={() => setUserModal({ mode: 'edit', user })}
                                                     className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600">
                                                     <Pencil className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     title={nextStatusOf(user.status) === 'blocked' ? 'Block user' : nextStatusOf(user.status) === 'active' ? 'Unblock user' : 'Activate user'}
-                                                    aria-label={`Change status for ${user.name}`}
+                                                    aria-label={`Change status for ${fullName}`}
                                                     onClick={() => setStatusTarget(user)}
                                                     className={`rounded-md border p-1.5 transition ${user.status === 'blocked' ? 'border-emerald-300 bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
                                                     <Lock className="h-4 w-4" />
                                                 </button>
-                                                <button title="Delete user" aria-label={`Delete ${user.name}`}
+                                                <button title="Delete user" aria-label={`Delete ${fullName}`}
                                                     onClick={() => setDeleteTarget(user)}
                                                     className="rounded-md border border-red-200 bg-white p-1.5 text-red-500 transition hover:border-red-300 hover:bg-red-50">
                                                     <Trash2 className="h-4 w-4" />
@@ -518,7 +525,7 @@ export default function AdminDashboard() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                );})}
 
                                 {!loading && pagedUsers.length === 0 && (
                                     <tr>
@@ -593,7 +600,7 @@ export default function AdminDashboard() {
                     title="Delete user"
                     tone="danger"
                     icon={<Trash2 className="h-6 w-6" />}
-                    message={`Are you sure you want to permanently delete “${deleteTarget.name}”? This action cannot be undone.`}
+                    message={`Are you sure you want to permanently delete “${deleteTarget.full_name || deleteTarget.name}”? This action cannot be undone.`}
                     confirmLabel="Delete"
                     busy={submitting}
                     onCancel={() => setDeleteTarget(null)}
@@ -607,7 +614,7 @@ export default function AdminDashboard() {
                     title={nextStatusOf(statusTarget.status) === 'blocked' ? 'Block user' : 'Unblock user'}
                     tone={nextStatusOf(statusTarget.status) === 'blocked' ? 'warning' : 'success'}
                     icon={<Lock className="h-6 w-6" />}
-                    message={`Change status of “${statusTarget.name}” from “${STATUS_COLORS[statusTarget.status].label}” to “${nextStatusLabel(statusTarget.status)}”?`}
+                    message={`Change status of “${statusTarget.full_name || statusTarget.name}” from “${STATUS_COLORS[statusTarget.status].label}” to “${nextStatusLabel(statusTarget.status)}”?`}
                     confirmLabel={nextStatusLabel(statusTarget.status)}
                     busy={submitting}
                     onCancel={() => setStatusTarget(null)}
@@ -623,14 +630,14 @@ export default function AdminDashboard() {
 // ================================================================
 function UserFormModal({ mode, initial, onCancel, onSubmit }) {
     const [form, setForm] = useState({
-        id: initial?.id ?? null,
-        name: initial?.name ?? '',
+        id: initial?.user_id ?? initial?.userid ?? initial?.userId ?? initial?.id ?? null,
+        name: initial?.full_name || initial?.name || '',
         email: initial?.email ?? '',
-        role: initial?.role ?? 'User',
+        role: initial?.role_name || initial?.role || ROLE_NAMES[initial?.role_id] || 'User',
         department: initial?.department ?? 'IT',
         status: initial?.status ?? 'active',
-        avatarUrl: initial?.avatarUrl ?? '',
-        createdAt: initial?.createdAt ?? new Date().toISOString().slice(0, 10),
+        avatarUrl: initial?.avatar_url || initial?.avatarUrl || '',
+        createdAt: initial?.created_at || initial?.createdAt || new Date().toISOString().slice(0, 10),
     });
 
     const [errors, setErrors] = useState({});
@@ -669,7 +676,7 @@ function UserFormModal({ mode, initial, onCancel, onSubmit }) {
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
                         {mode === 'edit'
-                            ? `Update the details for ${initial?.name}.`
+                            ? `Update the details for ${initial?.full_name || initial?.name}.`
                             : 'Create a brand new account and grant it a role.'}
                     </p>
                 </div>

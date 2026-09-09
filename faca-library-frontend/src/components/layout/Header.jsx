@@ -210,8 +210,8 @@ const Header = () => {
                     </div>
 
                     <Link 
-                        to="/inventory" 
-                        className={`nav-item ${isActive('/inventory') || location.pathname.startsWith('/inventory') ? 'active' : ''}`}
+                        to="/warehouse" 
+                        className={`nav-item ${isActive('/warehouse') || location.pathname.startsWith('/warehouse') ? 'active' : ''}`}
                         onClick={() => setIsMenuOpen(false)}
                     >
                         <Package size={18} />

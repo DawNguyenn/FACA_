@@ -8,6 +8,7 @@ import AdminRoleRequests from './pages/Admin/AdminRoleRequestsPage';
 import ProfilePage from './pages/Profile';
 import IssuesPage from './pages/IssuesPage';
 import RoleRequestPage from './pages/RoleRequestPage';
+import WarehouseExcelViewer from './pages/WarehouseExcelViewer';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 
@@ -120,6 +121,18 @@ function App() {
                         <ProtectedRoute>
                             <MainLayout>
                                 <RoleRequestPage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Kho dữ liệu Excel */}
+                <Route
+                    path="/warehouse"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <WarehouseExcelViewer />
                             </MainLayout>
                         </ProtectedRoute>
                     }

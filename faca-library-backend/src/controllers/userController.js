@@ -1,4 +1,4 @@
-const { poolPromise, sql } = require('../config/db');
+﻿const { poolPromise, sql } = require('../config/db');
 
 const VALID_STATUSES = ['active', 'inactive', 'blocked'];
 
@@ -6,7 +6,7 @@ const VALID_STATUSES = ['active', 'inactive', 'blocked'];
 // Lưu ý: tên cột trả về phải khớp với frontend ManageUsers.jsx:
 //   full_name, email, department, role_id, role_name, is_active, avatar_url
 const SELECT_COLUMNS = `
-    u.user_id AS userid,
+    u.user_id AS user_id,
     u.full_name,
     u.email,
     u.role_id,
@@ -76,7 +76,7 @@ const getUsers = async (req, res) => {
 
         // Đảm bảo trả về đầy đủ các trường không null để frontend không crash
         const users = result.recordset.map(u => ({
-            userid: u.userid,
+            user_id: u.user_id,
             full_name: u.full_name || '',
             email: u.email || '',
             role_id: u.role_id || null,
@@ -140,7 +140,7 @@ const getAdminUsers = async (req, res) => {
 
         // Đảm bảo trả về đầy đủ các trường không null để frontend không crash
         const users = result.recordset.map(u => ({
-            userid: u.userid,
+            user_id: u.user_id,
             full_name: u.full_name || '',
             email: u.email || '',
             role_id: u.role_id || null,
@@ -249,7 +249,9 @@ const toggleUserLock = async (req, res) => {
 // 3. POST /api/users
 const createUser = async (req, res) => {
     try {
-        const { name, email, role, department, status, avatarUrl } = req.body || {};
+        // Payload khớp với contract snake_case (đồng bộ với response & DB):
+        // { full_name, email, role_name, department, status, avatar_url }
+        const { full_name: name, email, role_name: role, department, status, avatar_url: avatarUrl } = req.body || {};
         const finalStatus = VALID_STATUSES.includes(status) ? status : 'active';
 
         if (!name || !name.trim()) {
@@ -318,12 +320,14 @@ const updateUser = async (req, res) => {
         }
 
         const body = req.body || {};
-        const name = body.name ?? existing.name;
+        // Contract snake_case — đồng bộ với request frontend & response:
+        // { full_name, email, role_name, department, status, avatar_url }
+        const name = body.full_name ?? existing.full_name;
         const email = body.email ?? existing.email;
-        const role = body.role ?? existing.role;
+        const role = body.role_name ?? existing.role_name;
         const department = body.department ?? existing.department;
         const status = VALID_STATUSES.includes(body.status) ? body.status : existing.status;
-        const avatarUrl = body.avatarUrl !== undefined ? body.avatarUrl : existing.avatarUrl;
+        const avatarUrl = body.avatar_url !== undefined ? body.avatar_url : existing.avatar_url;
 
         if (!name || !name.trim()) {
             return res.status(400).json({ success: false, message: 'Tên người dùng là bắt buộc.' });

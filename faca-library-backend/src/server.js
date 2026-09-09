@@ -21,6 +21,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const roleRequestRoutes = require('./routes/roleRequestRoutes');
+const warehouseExcelRoutes = require('./routes/warehouseExcelRoutes');
 
 // Serve ảnh đã upload (avatar...) dưới dạng file tĩnh
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -32,6 +33,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/role-requests', roleRequestRoutes);
+// Đọc Excel quản lý kho: /api/sheets, /api/sheet-data?name=...
+app.use('/api', warehouseExcelRoutes);
 
 // Route kiểm tra trạng thái Server (Health Check)
 app.get('/', (req, res) => {
