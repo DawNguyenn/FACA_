@@ -24,6 +24,8 @@ const en = {
             catMechanical: 'Mechanical Errors',
             adminUsers: 'User Management',
             adminRoleRequests: 'Role Request Management',
+            warehouseExcel: 'Warehouse Excel Data',
+            warehouseLots: 'Inventory Lots',
         },
         pages: {
             issuesTitle: 'Issues Management',

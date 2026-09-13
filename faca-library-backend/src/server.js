@@ -22,6 +22,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const roleRequestRoutes = require('./routes/roleRequestRoutes');
 const warehouseExcelRoutes = require('./routes/warehouseExcelRoutes');
+const inventoryImportRoutes = require('./routes/inventoryImportRoutes');
 
 // Serve ảnh đã upload (avatar...) dưới dạng file tĩnh
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -35,6 +36,12 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/role-requests', roleRequestRoutes);
 // Đọc Excel quản lý kho: /api/sheets, /api/sheet-data?name=...
 app.use('/api', warehouseExcelRoutes);
+
+// Async Excel import pipeline: /api/inventory/import, /api/inventory/import/:id/status
+app.use('/api/inventory', inventoryImportRoutes);
+
+const inventoryDataRoutes = require('./routes/warehouseDataRoutes');
+app.use('/api/warehouse', inventoryDataRoutes);
 
 // Route kiểm tra trạng thái Server (Health Check)
 app.get('/', (req, res) => {

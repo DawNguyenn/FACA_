@@ -1,5 +1,4 @@
 import axios from 'axios';
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
@@ -13,14 +12,6 @@ export const getMyProfile = async () => {
     return data.user || data;
 };
 
-/**
- * PUT /api/users/me — Cập nhật thông tin cá nhân (JWT, user hiện hành từ token)
- * Payload: { full_name, department, avatar_url }
- * Backend chạy query T-SQL:
- *   UPDATE dbo.users
- *   SET full_name = @full_name, department = @department, avatar_url = @avatar_url
- *   WHERE user_id = @user_id;  (parameter kiểu NVarChar -> hỗ trợ tiếng Việt có dấu)
- */
 export const updateMyProfile = async (payload) => {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };

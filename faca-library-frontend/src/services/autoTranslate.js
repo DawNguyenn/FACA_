@@ -1,15 +1,5 @@
-// ================================================================
-//  autoTranslate.js — Dịch tự động cho các chuỗi CHƯA có trong
-//  dictionary i18n thủ công (vi.js / en.js / ko.js).
-//  - Endpoint: Google Translate (gtx, không cần API key)
-//  - Cache 2 lớp: bộ nhớ (Map) + localStorage (tồn tại qua reload)
-//  - Fallback: trả về văn bản gốc nếu API lỗi
-// ================================================================
-
 const CACHE_STORAGE_KEY = 'auto_translations_v1';
 const CACHE_MAX_ENTRIES = 500;
-
-// Cache trong bộ nhớ của phiên hiện tại: { [lang]: { [sourceText]: translated } }
 const memoryCache = {};
 
 function loadPersistedCache() {
@@ -25,7 +15,7 @@ function loadPersistedCache() {
 
 function savePersistedCache(cache) {
     try {
-        // Giới hạn số lượng entry để localStorage không phình to
+
         for (const lang of Object.keys(cache)) {
             const entries = Object.entries(cache[lang]);
             if (entries.length > CACHE_MAX_ENTRIES) {
@@ -34,11 +24,10 @@ function savePersistedCache(cache) {
         }
         localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(cache));
     } catch {
-        // localStorage đầy / không khả dụng -> bỏ qua
+  
     }
 }
 
-/** Lấy bản dịch tự động đã cache cho 1 chuỗi (hoặc null nếu chưa có) */
 export const getCachedTranslation = (lang, text) => {
     if (!memoryCache[lang]) {
         const persisted = loadPersistedCache();
@@ -66,7 +55,6 @@ export const setCachedTranslation = (lang, text, translated) => {
 export const translateText = async (text, targetLang) => {
     if (!text || !targetLang || targetLang === 'vi') return text;
 
-    // Kiểm tra cache trước khi gọi mạng
     const cached = getCachedTranslation(targetLang, text);
     if (cached !== null) return cached;
 
@@ -79,7 +67,6 @@ export const translateText = async (text, targetLang) => {
         if (!res.ok) throw new Error(`Translate API HTTP ${res.status}`);
 
         const data = await res.json();
-        // Format gtx: [ [ [translated, source, ...], ... ], ... ]
         const translated = (data?.[0] || [])
             .map((seg) => seg?.[0])
             .filter(Boolean)
@@ -95,7 +82,6 @@ export const translateText = async (text, targetLang) => {
     }
 };
 
-/** Xóa toàn bộ cache dịch tự động (dùng khi cần refresh) */
 export const clearAutoTranslateCache = () => {
     Object.keys(memoryCache).forEach((k) => delete memoryCache[k]);
     localStorage.removeItem(CACHE_STORAGE_KEY);

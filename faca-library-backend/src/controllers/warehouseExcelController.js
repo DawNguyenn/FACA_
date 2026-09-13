@@ -1,14 +1,9 @@
-// ================================================================
-//  warehouseExcelController.js — Đọc & hiển thị file Excel quản lý kho
-//  (D:\DAWN_ANIME_Warehouse_Management_System.xlsx) dưới dạng JSON.
-// ================================================================
 const XLSX = require('xlsx');
 
-// FILE_PATH tuyệt đối trên máy — đọc trực tiếp từ ổ đĩa
+// FILE_PATH tuyệt đối trên máy 
 const FILE_PATH = process.env.WAREHOUSE_EXCEL_PATH
-    || 'D:\\DAWN_ANIME_Warehouse_Management_System.xlsx';
+    || 'D:\\Quan_Ly_Nguyen_Vat_Lieu_NPI.xlsx';
 
-// Lỗi EBUSY / EACCES: file đang bị khóa bởi một chương trình khác (vd Excel)
 const isFileLockError = (err) =>
     err &&
     (err.code === 'EBUSY' ||
@@ -17,10 +12,9 @@ const isFileLockError = (err) =>
         /EBUSY/.test(err.message || '') ||
         /being used by another process/i.test(err.message || ''));
 
-// Trả về message thân thiện cho người dùng
 const friendyError = (err) => {
     if (isFileLockError(err)) {
-        return 'File Excel đang bị khóa hoặc đang mở. Vui lòng đóng file D:\\DAWN_ANIME_Warehouse_Management_System.xlsx trên máy tính rồi thử lại.';
+        return 'File Excel đang bị khóa hoặc đang mở. Vui lòng đóng file D:\\Quan_Ly_Nguyen_Vat_Lieu_NPI.xlsx trên máy tính rồi thử lại.';
     }
     if (err && err.code === 'ENOENT') {
         return `Không tìm thấy file Excel: ${FILE_PATH}`;
@@ -40,6 +34,10 @@ const getSheets = (req, res) => {
 };
 
 // API 2: GET /api/sheet-data?name={sheetName} — dữ liệu của 1 sheet
+// Trả về { title, subtitle, headers, data }:
+//  - title/subtitle: 2 dòng tiêu đề merged phía trên bảng (nếu có)
+//  - headers: hàng tiêu đề cột (hàng đầu tiên có >= 5 ô không trống)
+//  - data: các dòng dữ liệu bên dưới headers (bỏ dòng trống)
 const getSheetData = (req, res) => {
     try {
         const sheetName = req.query.name;
@@ -51,24 +49,64 @@ const getSheetData = (req, res) => {
             return res.status(404).json({ success: false, message: `Sheet "${targetSheetName}" không tồn tại.` });
         }
 
-        // - range: config số dòng tiêu đề thừa ở phía trên nếu có (mặc định auto-detect)
-        //   Muốn bỏ X dòng rác đầu tiên: đặt range = X + 1 (sheet_to_json tính từ 1 trở đi)
-        // - defval: "" => điền giá trị mặc định rỗng, đảm bảo đủ key cho mọi hàng
-        // - raw: false => convert giá trị thành string (số -> text, ngày -> dd/MM/yyyy)
-        // - dateNF: định dạng ngày tháng khi raw:false
-        const range = parseInt(req.query.range, 10) || 0; // 0 => auto-detect
-        const data = XLSX.utils.sheet_to_json(sheet, {
+        // Đọc toàn bộ sheet dạng mảng 2 chiều
+        const aoa = XLSX.utils.sheet_to_json(sheet, {
+            header: 1,
             defval: '',
             raw: false,
             dateNF: 'yyyy-mm-dd',
-            ...(range ? { range } : {}),
         });
 
-        res.json({ success: true, sheetName: targetSheetName, data });
+        const headerIdx = aoa.findIndex(
+            (row) => row.filter((c) => String(c).trim() !== '').length >= 5
+        );
+
+        if (headerIdx === -1) {
+            return res.status(404).json({ success: false, message: `Sheet "${targetSheetName}" không có hàng tiêu đề cột.` });
+        }
+
+        const headers = aoa[headerIdx].map((h) => String(h).trim());
+        const title = String(aoa[0]?.[0] || '').trim();
+        const subtitle = String(aoa[1]?.[0] || '').trim();
+
+        // Chuyển toàn bộ dòng dữ liệu thành object, bỏ dòng trống
+        let rows = aoa
+            .slice(headerIdx + 1)
+            .filter((row) => row.some((c) => String(c).trim() !== ''))
+            .map((row) => {
+                const obj = {};
+                headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
+                return obj;
+            });
+
+        // Phân trang + tìm kiếm (server-side để giảm RAM trình duyệt)
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
+        const search = String(req.query.search || '').trim().toLowerCase();
+
+        if (search) {
+            rows = rows.filter((row) =>
+                headers.some((h) => String(row[h] ?? '').toLowerCase().includes(search))
+            );
+        }
+
+        const totalRows = rows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / limit));
+        const safePage = Math.min(page, totalPages);
+        const data = rows.slice((safePage - 1) * limit, safePage * limit);
+
+        res.json({
+            success: true,
+            sheetName: targetSheetName,
+            title,
+            subtitle,
+            headers,
+            data,
+            pagination: { page: safePage, limit, totalRows, totalPages },
+        });
     } catch (error) {
         console.error('Lỗi khi đọc dữ liệu sheet:', error);
         res.status(500).json({ success: false, error: friendyError(error) });
     }
 };
-
 module.exports = { getSheets, getSheetData, FILE_PATH };

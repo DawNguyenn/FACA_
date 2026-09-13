@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User, Menu, X, ShieldCheck, Search, Loader, ChevronDown, Zap, Eye, Wrench, KeyRound } from 'lucide-react';
+import { Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User, Menu, X, ShieldCheck, Search, Loader, ChevronDown, Zap, Eye, Wrench, KeyRound, FileSpreadsheet, Boxes } from 'lucide-react';
 import axios from 'axios';
 import '../../Styles/Header.css';
 
@@ -126,6 +126,10 @@ const Header = () => {
             { label: t('header.catOptical'), to: '/issues?category_id=2', icon: Eye },
             { label: t('header.catMechanical'), to: '/issues?category_id=3', icon: Wrench },
         ],
+        warehouse: [
+            { label: t('header.warehouseExcel'), to: '/warehouse', icon: FileSpreadsheet },
+            { label: t('header.warehouseLots'), to: '/warehouse/inventory-lots', icon: Boxes },
+        ],
         admin: [
             { label: t('header.adminUsers'), to: '/admin/users', icon: ShieldCheck },
             {
@@ -209,14 +213,26 @@ const Header = () => {
                         )}
                     </div>
 
-                    <Link 
-                        to="/warehouse" 
-                        className={`nav-item ${isActive('/warehouse') || location.pathname.startsWith('/warehouse') ? 'active' : ''}`}
-                        onClick={() => setIsMenuOpen(false)}
+                    {/* Kho & Vật tư + dropdown (Kho dữ liệu Excel / Inventory Lots) */}
+                    <div
+                        className={`nav-item nav-dropdown ${location.pathname.startsWith('/warehouse') ? 'active' : ''}`}
+                        onClick={() => toggleDropdown('warehouse')}
+                        aria-expanded={openDropdown === 'warehouse'}
                     >
                         <Package size={18} />
                         <span>{t('header.inventory')}</span>
-                    </Link>
+                        <ChevronDown size={14} className="nav-chevron" />
+                        {openDropdown === 'warehouse' && (
+                            <div className="nav-dropdown-menu" onClick={closeDropdowns}>
+                                {dropdownItems.warehouse.map((item) => (
+                                    <Link key={item.to} to={item.to} className="nav-dropdown-item" onClick={closeDropdowns}>
+                                        <item.icon size={16} />
+                                        <span className="nav-dropdown-label">{item.label}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Chỉ hiển thị Admin khi người dùng có quyền admin */}
                     {isAdmin && (

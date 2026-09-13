@@ -24,6 +24,8 @@ const ko = {
             catMechanical: '기계 오류',
             adminUsers: '사용자 관리',
             adminRoleRequests: '역할 요청 관리',
+            warehouseExcel: '창고 엑셀 데이터',
+            warehouseLots: '재고 Lots',
         },
         pages: {
             issuesTitle: '장애 관리',

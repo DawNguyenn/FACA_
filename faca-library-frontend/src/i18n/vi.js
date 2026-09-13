@@ -24,6 +24,8 @@ const vi = {
             catMechanical: 'Lỗi cơ',
             adminUsers: 'Quản lý người dùng',
             adminRoleRequests: 'Quản lý yêu cầu cấp quyền',
+            warehouseExcel: 'Kho dữ liệu Excel',
+            warehouseLots: 'Inventory Lots',
 },
         pages: {
             issuesTitle: 'Quản lý Lỗi',

@@ -1,15 +1,13 @@
-// ================================================================
-//  warehouseExcelRoutes.js — /api
-//  Đọc & hiển thị file Excel quản lý kho dưới dạng JSON
-// ================================================================
 const express = require('express');
 const router = express.Router();
 const { getSheets, getSheetData } = require('../controllers/warehouseExcelController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// GET /api/sheets — danh sách tên các Sheet
-router.get('/sheets', getSheets);
-
-// GET /api/sheet-data?name={sheetName}&range={n} — dữ liệu của 1 sheet
-router.get('/sheet-data', getSheetData);
+// Mọi user đã đăng nhập đều được XEM/TÌM KIẾM dữ liệu kho
+// (quyền import sẽ được kiểm soát riêng ở /api/inventory/import)
+router.get('/warehouse/sheets', authMiddleware, getSheets);
+router.get('/warehouse/sheet-data', authMiddleware, getSheetData);
+// Lưu ý: GET /api/inventory đã được xử lý bởi inventoryImportRoutes.js
+// (app.use('/api/inventory', ...) trong server.js) — không khai báo lại ở đây.
 
 module.exports = router;

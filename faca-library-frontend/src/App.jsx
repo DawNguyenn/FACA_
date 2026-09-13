@@ -9,6 +9,7 @@ import ProfilePage from './pages/Profile';
 import IssuesPage from './pages/IssuesPage';
 import RoleRequestPage from './pages/RoleRequestPage';
 import WarehouseExcelViewer from './pages/WarehouseExcelViewer';
+import InventoryLotsPage from './pages/InventoryLotsPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 
@@ -133,6 +134,18 @@ function App() {
                         <ProtectedRoute>
                             <MainLayout>
                                 <WarehouseExcelViewer />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Inventory Lots (tách riêng khỏi Kho dữ liệu Excel) */}
+                <Route
+                    path="/warehouse/inventory-lots"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <InventoryLotsPage />
                             </MainLayout>
                         </ProtectedRoute>
                     }
