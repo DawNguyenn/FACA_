@@ -292,10 +292,10 @@
     position: absolute;
     right: 0;
     top: 48px;
-    width: 210px;
+    width: 230px;
     background-color: #ffffff;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 12px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
     padding: 10px;
     z-index: 1001;
@@ -324,15 +324,23 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
     background: none;
     border: none;
     color: #dc2626;
     font-size: 0.82rem;
     font-weight: 500;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
+    white-space: nowrap;
+    text-align: left;
+    transition: background-color 0.15s ease;
+}
+
+.popover-logout-btn svg {
+    flex-shrink: 0;
 }
 
 .popover-logout-btn:hover {

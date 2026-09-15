@@ -118,9 +118,6 @@ const Header = () => {
 
     // Danh mục con menu sổ xuống
     const dropdownItems = {
-        home: [
-            { label: t('header.requestRole'), to: '/request-role', icon: KeyRound },
-        ],
         issues: [
             { label: t('header.catElectrical'), to: '/issues?category_id=1', icon: Zap },
             { label: t('header.catOptical'), to: '/issues?category_id=2', icon: Eye },
@@ -171,25 +168,12 @@ const Header = () => {
 
                 {/* Navigation Links */}
                 <nav className={`header-nav ${isMenuOpen ? 'nav-open' : ''}`}>
-                    {/* Trang chủ + dropdown (Xin cấp quyền) */}
-                    <div
-                        className="nav-item nav-dropdown"
-                        onClick={() => toggleDropdown('home')}
-                        aria-expanded={openDropdown === 'home'}
-                    >
+                    {/* Trang chủ (link trực tiếp) */}
+                    <div className={`nav-item ${location.pathname === '/' ? 'active' : ''}`} onClick={closeDropdowns}>
                         <LayoutDashboard size={18} />
-                        <span>{t('header.home')}</span>
-                        <ChevronDown size={14} className="nav-chevron" />
-                        {openDropdown === 'home' && (
-                            <div className="nav-dropdown-menu" onClick={closeDropdowns}>
-                                {dropdownItems.home.map((item) => (
-                                    <Link key={item.to} to={item.to} className="nav-dropdown-item" onClick={closeDropdowns}>
-                                        <item.icon size={16} />
-                                        <span className="nav-dropdown-label">{item.label}</span>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
+                        <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <span>{t('header.home')}</span>
+                        </Link>
                     </div>
 
                     {/* Quản lý Lỗi + dropdown (Lỗi điện / quang / cơ) */}
@@ -315,6 +299,16 @@ const Header = () => {
                                     >
                                         <UserCircle size={16} />
                                         <span>{t('common.profile')}</span>
+                                    </button>
+                                    <button
+                                        className="popover-logout-btn popover-profile-btn"
+                                        onClick={() => {
+                                            setIsProfileOpen(false);
+                                            navigate('/request-role');
+                                        }}
+                                    >
+                                        <KeyRound size={16} />
+                                        <span>{t('header.requestRole')}</span>
                                     </button>
                                     <button className="popover-logout-btn" onClick={handleLogout}>
                                         <LogOut size={16} />
