@@ -4,7 +4,7 @@
 .lang-switcher {
     position: absolute;
     top: 14px;
-    right: 16px;
+    right: 50px;
     display: flex;
     gap: 6px;
     z-index: 20;

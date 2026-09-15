@@ -15,7 +15,11 @@ const dbConfig = {
         max: 10,
         min: 0,
         idleTimeoutMillis: 30000
-    }
+    },
+    // Mssql mặc định requestTimeout = 15000ms → gây "Timeout" khi chạy
+    // truy vấn nặng (BULK INSERT, SP xử lý 60k+ dòng). 0 = không giới hạn.
+    requestTimeout: parseInt(process.env.DB_REQUEST_TIMEOUT || '0', 10),
+    connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '30000', 10)
 };
 
 // Tạo Connection Pool

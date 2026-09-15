@@ -39,7 +39,7 @@ const getMaterials = async (req, res) => {
       FROM dbo.Materials m
       LEFT JOIN dbo.Vendors v ON v.VendorID = m.VendorID
       LEFT JOIN dbo.MaterialTypes mt ON mt.MaterialTypeID = m.MaterialTypeID
-      WHERE 1=1' + searchSql + '
+      WHERE 1=1${searchSql}
       ORDER BY m.MaterialName
       OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;`
 
@@ -124,7 +124,7 @@ const getInventoryLotsPaginated = async (req, res) => {
       INNER JOIN dbo.Projects p ON p.ProjectID = il.ProjectID
       INNER JOIN dbo.Builds b ON b.BuildID = il.BuildID
       INNER JOIN dbo.Materials m ON m.MaterialID = il.MaterialID
-      WHERE 1=1' + searchSql + '
+      WHERE 1=1${searchSql}
       ORDER BY il.LotCode
       OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;`
 
@@ -182,7 +182,7 @@ const getProjectsPaginated = async (req, res) => {
     const dataSql = `
       SELECT ProjectID, ProjectCode, ProjectName, CreatedDate
       FROM dbo.Projects
-      WHERE 1=1' + searchSql + '
+      WHERE 1=1${searchSql}
       ORDER BY ProjectCode
       OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;`
 
@@ -240,7 +240,7 @@ const getVendorsPaginated = async (req, res) => {
     const dataSql = `
       SELECT VendorID, VendorName, Country, ContactName, Phone, Email, IsActive, CreatedDate
       FROM dbo.Vendors
-      WHERE 1=1' + searchSql + '
+      WHERE 1=1${searchSql}
       ORDER BY VendorName
       OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;`
 
@@ -299,7 +299,7 @@ const getBuildsPaginated = async (req, res) => {
       SELECT b.BuildID, b.BuildCode, b.BuildName, b.ProjectID, p.ProjectCode, p.ProjectName
       FROM dbo.Builds b
       INNER JOIN dbo.Projects p ON p.ProjectID = b.ProjectID
-      WHERE 1=1' + searchSql + '
+      WHERE 1=1${searchSql}
       ORDER BY b.BuildCode
       OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;`
 

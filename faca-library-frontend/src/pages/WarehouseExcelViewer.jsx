@@ -1,15 +1,87 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Table2, FileSpreadsheet, AlertTriangle, MapPin, Upload, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react';
-import ExcelImporter from '../components/ExcelImporter';
+import { Loader2, FileSpreadsheet, AlertTriangle, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// ================================================================
+//  WarehouseExcelViewer — SQL-CENTRIC (chỉ hiển thị)
+//  Dữ liệu được BULK INSERT thủ công vào SQL Server:
+//    - dbo.Staging_CHS / Staging_PSM27 / Staging_PDX27 / Staging_DuAnKhac
+//    - dbo.Staging_NVL_Tray / Staging_NVL_Cap / Staging_NVL_Smt
+//  Backend chỉ SELECT + LIKE search + OFFSET/FETCH pagination.
+// ================================================================
+
+const PAGE_LIMIT = 50; // Số dòng mỗi trang — phân trang phía Database
+
+// 7 nguồn dữ liệu staging (khớp STAGING_SOURCES trong stagingDataController.js)
+// Khớp 7 sheet của file Quan_Ly_Nguyen_Vat_Lieu_NPI.xlsx
+const SOURCES = [
+    { key: 'chs', label: 'CHS', table: 'Staging_CHS' },
+    { key: 'psm27', label: 'PSM27', table: 'Staging_PSM27' },
+    { key: 'pdx27', label: 'PDX27', table: 'Staging_PDX27' },
+    { key: 'khac', label: 'Dự Án Khác', table: 'Staging_DuAnKhac' },
+    { key: 'tray', label: 'NVL - TRAY', table: 'Staging_NVL_Tray' },
+    { key: 'cap', label: 'NVL - CAP', table: 'Staging_NVL_Cap' },
+    { key: 'smt', label: 'NVL - SMT', table: 'Staging_NVL_Smt' },
+];
+
+// Nhãn tiếng Việt thân thiện cho các cột (fallback: tên cột gốc)
+const COLUMN_LABELS = {
+    Change_Date: 'Ngày thay đổi',
+    Model: 'Model',
+    Build: 'Build',
+    Received_Date: 'Ngày nhận',
+    Material: 'Vật liệu',
+    Vendor: 'Nhà cung cấp',
+    Description: 'Mô tả',
+    Config: 'Config',
+    Lot_ID: 'Lot ID',
+    Shipment_Qty: 'SL nhập',
+    RnD: 'RnD',
+    Qty_Ton_Kho: 'Tồn kho',
+    Output_Date: 'Ngày xuất',
+    Receiver: 'Người nhận',
+    Ma_NV: 'Mã NV',
+    Ghi_Chu: 'Ghi chú',
+    Tong_Qty_Ton: 'Tổng tồn',
+    Bill: 'Bill',
+    IV: 'I/V',
+    Qty_Xuat_Hang: 'SL xuất hàng',
+    Ton_Kho: 'Tồn kho',
+    IQA_Result: 'Kết quả IQA',
+    Special_Note: 'Ghi chú đặc biệt',
+    Xuat_1_Date: 'Xuất 1 — Ngày',
+    Xuat_1_DRI: 'Xuất 1 — DRI',
+    Xuat_1_Qty: 'Xuất 1 — SL',
+    Xuat_2_Date: 'Xuất 2 — Ngày',
+    Xuat_2_DRI: 'Xuất 2 — DRI',
+    Xuat_2_Qty: 'Xuất 2 — SL',
+    Xuat_3_Date: 'Xuất 3 — Ngày',
+    Xuat_3_DRI: 'Xuất 3 — DRI',
+    Xuat_3_Qty: 'Xuất 3 — SL',
+};
+
+const columnLabel = (name) => COLUMN_LABELS[name] || name;
+
+// Các cột số lượng — hiển thị định dạng số và tự bỏ ký tự quote (") thừa
+// do lỗi BULK INSERT từ CSV gây ra (VD: "1 → 1 → hiển thị 1)
+const NUMERIC_COLS = new Set([
+    'Shipment_Qty', 'Qty_Ton_Kho', 'Tong_Qty_Ton', 'RnD',
+    'Qty_Xuat_Hang', 'Ton_Kho', 'Xuat_1_Qty', 'Xuat_2_Qty', 'Xuat_3_Qty',
+]);
+
+const displayValue = (col, value) => {
+    if (value === null || value === undefined) return '';
+    const cleaned = String(value).replace(/"/g, '').trim();
+    if (NUMERIC_COLS.has(col) && cleaned !== '' && !Number.isNaN(Number(cleaned))) {
+        return Number(cleaned).toLocaleString('vi-VN');
+    }
+    return cleaned;
+};
+
 /**
- * GET request helper returning parsed JSON body.
- * Adds Authorization header when a token exists (same pattern as inventoryService).
- * @param {string} url
- * @returns {Promise<any>} response data
+ * GET request helper trả về JSON body + Authorization header (nếu có token).
  */
 const fetchJSON = async (url) => {
     const token = localStorage.getItem('token');
@@ -19,241 +91,167 @@ const fetchJSON = async (url) => {
     return response.data;
 };
 
-// ================================================================
-//  WarehouseExcelViewer — Hiển thị dữ liệu kho từ SQL Server
-//  (Thay thế đọc file Excel client-side bằng API phân trang)
-// ================================================================
-const PAGE_LIMIT = 50; // Số dòng cố định mỗi trang — giảm RAM trình duyệt
-
-// Role được phép xem dữ liệu kho (theo role_id trong SQL Server):
-// 1 = Admin, 4 = Warehouse
-const ALLOWED_ROLE_IDS = [1, 4];
-
-/**
- * Lấy thông tin user + roleId từ localStorage (được đồng bộ bởi Header qua /auth/me).
- * Hỗ trợ nhiều biến đặt tên: RoleId / role_id / roleid / role.
- */
-const getCurrentUser = () => {
-    try {
-        return JSON.parse(localStorage.getItem('user') || 'null');
-    } catch {
-        return null;
-    }
-};
-
-const getUserRoleId = (user) => {
-    if (!user) return null;
-    const raw = user.RoleId ?? user.RoleID ?? user.role_id ?? user.roleid ?? user.roleId;
-    const num = Number(raw);
-    if (!Number.isNaN(num) && raw !== null && raw !== '' && raw !== undefined) return num;
-    const roleName = String(user.role_name || user.role || '').toLowerCase();
-    if (roleName === 'admin') return 1;
-    if (roleName === 'warehouse') return 4;
-    return null;
-};
-
 export default function WarehouseExcelViewer() {
-    // Quyền import: chỉ Admin (1) / Warehouse (4) mới thấy nút "Nhập Excel"
-    // — mọi user vẫn xem và tìm kiếm dữ liệu bình thường
-    const [currentUser] = useState(getCurrentUser);
-    const canImport = ALLOWED_ROLE_IDS.includes(getUserRoleId(currentUser));
-    const [sheets, setSheets] = useState([]);
-    const [currentSheet, setCurrentSheet] = useState('');
+    const [source, setSource] = useState(SOURCES[0].key);
     const [tableData, setTableData] = useState([]);
-    const [sheetHeaders, setSheetHeaders] = useState([]);
-    const [sheetMeta, setSheetMeta] = useState({ title: '', subtitle: '' });
+    const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    // Phân trang + tìm kiếm (server-side)
+    // Phân trang + tìm kiếm (server-side: OFFSET/FETCH + WHERE LIKE)
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRows, setTotalRows] = useState(0);
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
-    // Debounce từ khóa tìm kiếm 400ms để không gọi API liên tục khi gõ
+    // Debounce từ khóa tìm kiếm 400ms
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
         return () => clearTimeout(timer);
     }, [search]);
 
-    // Reset về trang 1 mỗi khi đổi sheet hoặc đổi từ khóa tìm kiếm
+    // Reset về trang 1 khi đổi nguồn dữ liệu hoặc từ khóa
     useEffect(() => {
         setPage(1);
-    }, [currentSheet, debouncedSearch]);
+    }, [source, debouncedSearch]);
 
-    // Load danh sách sheets ngay khi mount (chỉ khi có quyền)
+    // Load dữ liệu của trang hiện tại từ SQL Server
     useEffect(() => {
-        fetchJSON(`${API_BASE}/warehouse/sheets`)
-            .then(res => {
-                if (res.success && res.sheets.length > 0) {
-                    setSheets(res.sheets);
-                    setCurrentSheet(res.sheets[0]);
-                } else {
-                    setError(res.message || 'Không có sheet nào.');
-                }
-            })
-            .catch(err => setError(err.message || 'Không thể kết nối tới backend.'));
-    }, []);
-
-    // Load dữ liệu sheet: chỉ nhận tối đa `limit` dòng/trang từ backend
-    useEffect(() => {
-        if (!currentSheet) return undefined;
         let cancelled = false;
         setLoading(true);
         setError(null);
         const params = new URLSearchParams({
-            name: currentSheet,
             page: String(page),
             limit: String(PAGE_LIMIT),
         });
         if (debouncedSearch) params.set('search', debouncedSearch);
 
-        fetchJSON(`${API_BASE}/warehouse/sheet-data?${params.toString()}`)
-            .then(res => {
+        fetchJSON(`${API_BASE}/warehouse/${source}?${params.toString()}`)
+            .then((res) => {
                 if (cancelled) return;
                 if (res.success) {
-                    setSheetMeta({ title: res.title || '', subtitle: res.subtitle || '' });
-                    setSheetHeaders(res.headers || []);
+                    setColumns(res.columns || []);
                     setTableData(res.data || []);
                     const pg = res.pagination || {};
                     setTotalPages(pg.totalPages || 1);
-                    setTotalRows(pg.totalRows || (res.data || []).length);
+                    setTotalRows(pg.totalRows || 0);
                     setPage(pg.page || page);
                 } else {
-                    setSheetMeta({ title: '', subtitle: '' });
-                    setSheetHeaders([]);
+                    setColumns([]);
                     setTableData([]);
                     setTotalRows(0);
                     setTotalPages(1);
-                    setError(res.message || res.error || 'Không tải được dữ liệu sheet.');
+                    setError(res.message || 'Không tải được dữ liệu.');
                 }
             })
-            .catch(err => {
+            .catch((err) => {
                 if (cancelled) return;
-                setSheetMeta({ title: '', subtitle: '' });
-                setSheetHeaders([]);
+                setColumns([]);
                 setTableData([]);
                 setTotalRows(0);
                 setTotalPages(1);
-                setError(err.message || 'Không thể kết nối tới backend.');
+                setError(err.response?.data?.message || err.message || 'Không thể kết nối tới backend.');
             })
             .finally(() => { if (!cancelled) setLoading(false); });
 
         return () => { cancelled = true; };
-    }, [currentSheet, page, debouncedSearch]);
+    }, [source, page, debouncedSearch]);
 
-    // Headers của bảng Excel: ưu tiên headers từ API, fallback về key của dòng đầu
-    const headers = sheetHeaders.length > 0
-        ? sheetHeaders
-        : (tableData.length > 0 ? Object.keys(tableData[0]) : []);
-
-    // Vị trí dòng đầu tiên của trang hiện tại (đánh số # giống Excel)
+    const activeSource = SOURCES.find((s) => s.key === source) || SOURCES[0];
     const rowOffset = (page - 1) * PAGE_LIMIT;
 
     return (
         <div className="mx-auto max-w-7xl px-4 py-8">
-{/* Header */}
-            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
+            {/* Header + chọn nguồn dữ liệu */}
+            <div className="mb-6 rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
                         <FileSpreadsheet className="h-6 w-6" />
                     </span>
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">Kho Dữ Liệu Excel</h2>
-                        <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
-                            <MapPin className="h-3.5 w-3.5" />
-                            D:\Quan_Ly_Nguyen_Vat_Lieu_NPI.xlsx
+                        <h2 className="text-xl font-bold text-slate-800">Kho Dữ Liệu</h2>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                            Dữ liệu kho đọc trực tiếp từ SQL Server (bảng{' '}
+                            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">{activeSource.table}</code>)
                         </p>
                     </div>
                 </div>
 
-                {/* Dropdown chọn sheet */}
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Chọn Sheet
-                    </label>
-                    <select
-                        value={currentSheet}
-                        onChange={(e) => setCurrentSheet(e.target.value)}
-                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                    >
-                        {sheets.map(sheet => (
-                            <option key={sheet} value={sheet}>{sheet}</option>
-                        ))}
-                    </select>
+                {/* Tìm kiếm + tổng số bản ghi */}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Tìm kiếm trên mọi cột..."
+                            className="w-72 rounded-lg border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                        />
+                    </div>
+                    <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                        {totalRows} bản ghi
+                    </span>
                 </div>
-{/* Nút Nhập Excel — chỉ Admin / WareHouse mới nhìn thấy */}
-                {canImport && <ExcelImporter onImportComplete={() => undefined} />}
             </div>
 
-            {/* Lỗi */}
-            {error && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{error}</span>
+            {/* Thanh sheet kiểu Excel — trên bảng, cuộn ngang khi nhiều dự án */}
+            <div className="mb-3 overflow-x-auto rounded-xl border border-slate-200 bg-slate-200/70 shadow-sm">
+                <div className="flex min-w-max items-end">
+                    {SOURCES.map((s) => {
+                        const active = source === s.key;
+                        return (
+                            <button
+                                key={s.key}
+                                onClick={() => setSource(s.key)}
+                                disabled={loading}
+                                title={`${s.label} — ${s.table}`}
+                                className={`group flex items-center gap-1.5 whitespace-nowrap border-r border-slate-300 px-4 py-2 text-xs font-medium transition ${
+                                    active
+                                        ? 'border-x border-t border-[#217346] bg-white text-[#217346] shadow-[inset_0_-3px_0_0_#217346]'
+                                        : 'bg-slate-200/0 text-slate-600 hover:bg-white/70'
+                                } disabled:cursor-not-allowed disabled:opacity-50`}
+                            >
+                                <FileSpreadsheet
+                                    className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-[#217346]' : 'text-emerald-600/60 group-hover:text-emerald-600'}`}
+                                />
+                                {s.label}
+                            </button>
+                        );
+                    })}
+                    <span className="flex-1" />
                 </div>
-            )}
+            </div>
 
-            {/* Bảng dữ liệu — thiết kế giống file Excel */}
-            <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
-                {/* Banner tiêu đề nền xanh navy giống Excel */}
-                {sheetMeta.title && (
-                    <div className="bg-[#17375E] px-4 py-5 text-center">
-                        <h3 className="text-base font-bold uppercase tracking-wide text-white sm:text-lg">
-                            {sheetMeta.title}
-                        </h3>
-                        {sheetMeta.subtitle && (
-                            <p className="mt-1 text-sm italic text-blue-100">{sheetMeta.subtitle}</p>
-                        )}
-                    </div>
-                )}
-
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-2.5">
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <Table2 className="h-4 w-4 text-emerald-600" />
-                        Sheet: {currentSheet || '...'}
-                    </h3>
-
-                    <div className="flex items-center gap-3">
-                        {/* Ô tìm kiếm — lọc dữ liệu phía backend */}
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Tìm kiếm trong sheet..."
-                                className="w-56 rounded-lg border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                            />
-                        </div>
-                        <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                            {totalRows} bản ghi
-                        </span>
-                    </div>
-                </div>
-
+            {/* Bảng dữ liệu */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 {loading ? (
                     <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
                         <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                         Đang tải dữ liệu...
                     </div>
+                ) : error ? (
+                    <div className="py-12 text-center text-sm text-red-600">
+                        <AlertTriangle className="mx-auto mb-2 h-6 w-6" />
+                        {error}
+                    </div>
                 ) : tableData.length === 0 ? (
                     <div className="py-16 text-center text-sm text-slate-400">
-                        {error ? 'Không có dữ liệu để hiển thị.' : 'Sheet trống.'}
+                        Không có dữ liệu. Hãy BULK INSERT dữ liệu vào bảng{' '}
+                        <code className="rounded bg-slate-100 px-1 py-0.5">{activeSource.table}</code> trong SQL Server.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="min-w-max w-full border-collapse text-left text-sm">
                             <thead>
                                 <tr>
-                                    {/* Cột số thứ tự giống Excel */}
+                                    {/* Cột số thứ tự */}
                                     <th className="sticky left-0 z-10 w-10 border border-slate-300 bg-[#17375E] px-2 py-2.5 text-center text-xs font-semibold text-white">
                                         #
                                     </th>
-                                    {headers.map((h, i) => (
-                                        <th key={i} className="border border-slate-300 bg-[#17375E] px-4 py-2.5 text-center text-xs font-bold whitespace-nowrap text-white">
-                                            {h}
+                                    {columns.map((col) => (
+                                        <th key={col} className="border border-slate-300 bg-[#17375E] px-4 py-2.5 text-center text-xs font-bold whitespace-nowrap text-white">
+                                            {columnLabel(col)}
                                         </th>
                                     ))}
                                 </tr>
@@ -264,9 +262,9 @@ export default function WarehouseExcelViewer() {
                                         <td className="sticky left-0 z-10 border border-slate-300 bg-slate-100 px-2 py-2 text-center text-xs font-medium text-slate-500">
                                             {rowOffset + rIdx + 1}
                                         </td>
-                                        {headers.map((col, cIdx) => (
-                                            <td key={cIdx} className="border border-slate-300 px-4 py-2 whitespace-nowrap text-slate-700">
-                                                {row[col] ?? ''}
+                                        {columns.map((col) => (
+                                            <td key={col} className="border border-slate-300 px-4 py-2 whitespace-nowrap text-slate-700">
+                                                {displayValue(col, row[col])}
                                             </td>
                                         ))}
                                     </tr>
@@ -277,7 +275,7 @@ export default function WarehouseExcelViewer() {
                 )}
             </div>
 
-            {/* Footer phân trang — điều hướng trang mượt mà */}
+            {/* Footer phân trang */}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
                 <span className="text-sm text-slate-500">
                     Trang <span className="font-semibold text-slate-700">{page}</span> / {totalPages}
@@ -287,7 +285,6 @@ export default function WarehouseExcelViewer() {
                     {PAGE_LIMIT} dòng/trang
                 </span>
                 <div className="flex items-center gap-1.5">
-                    {/* Về trang đầu */}
                     <button
                         onClick={() => setPage(1)}
                         disabled={page <= 1 || loading}
@@ -296,7 +293,6 @@ export default function WarehouseExcelViewer() {
                     >
                         <ChevronsLeft className="h-4 w-4" />
                     </button>
-                    {/* Trang trước */}
                     <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1 || loading}
@@ -305,8 +301,6 @@ export default function WarehouseExcelViewer() {
                         <ChevronLeft className="h-4 w-4" />
                         Trang trước
                     </button>
-
-                    {/* Số trang lân cận (tối đa 5 nút) */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         const start = Math.max(1, Math.min(page - 2, totalPages - 4));
                         return start + i;
@@ -324,8 +318,6 @@ export default function WarehouseExcelViewer() {
                             {p}
                         </button>
                     ))}
-
-                    {/* Trang sau */}
                     <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page >= totalPages || loading}
@@ -334,7 +326,6 @@ export default function WarehouseExcelViewer() {
                         Trang sau
                         <ChevronRight className="h-4 w-4" />
                     </button>
-                    {/* Đến trang cuối */}
                     <button
                         onClick={() => setPage(totalPages)}
                         disabled={page >= totalPages || loading}

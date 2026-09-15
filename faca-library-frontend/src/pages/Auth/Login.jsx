@@ -129,7 +129,7 @@ const Login = () => {
                         <div className="auth-icon-badge">
                             <Cpu size={32} color="#c00000" />
                         </div>
-                        <h1 className="auth-title">FACA Library</h1>
+                        <h1 className="auth-title">FACTS</h1>
                         <span className="auth-company-tag">{t('auth.companyTag')}</span>
                     </div>
 

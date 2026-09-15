@@ -21,7 +21,6 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const roleRequestRoutes = require('./routes/roleRequestRoutes');
-const warehouseExcelRoutes = require('./routes/warehouseExcelRoutes');
 const inventoryImportRoutes = require('./routes/inventoryImportRoutes');
 
 // Serve ảnh đã upload (avatar...) dưới dạng file tĩnh
@@ -34,12 +33,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/role-requests', roleRequestRoutes);
-// Đọc Excel quản lý kho: /api/sheets, /api/sheet-data?name=...
-app.use('/api', warehouseExcelRoutes);
 
 // Async Excel import pipeline: /api/inventory/import, /api/inventory/import/:id/status
 app.use('/api/inventory', inventoryImportRoutes);
 
+// Đọc dữ liệu kho SQL-Centric: /api/warehouse/npi, /api/warehouse/nvl
+// (dữ liệu được BULK INSERT thủ công vào các bảng Staging_NPI_Standard /
+//  Staging_NVL_Special — API chỉ SELECT hiển thị, KHÔNG đọc file Excel)
 const inventoryDataRoutes = require('./routes/warehouseDataRoutes');
 app.use('/api/warehouse', inventoryDataRoutes);
 

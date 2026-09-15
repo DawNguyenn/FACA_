@@ -135,7 +135,7 @@ const getAllRequests = async (req, res) => {
     }
 };
 
-// 5. GET /api/role-requests/pending-count — lấy numărul yêu cau ângă psăndí între
+// 5. GET /api/role-requests/pending-count 
 const getPendingCount = async (req, res) => {
     try {
         const pool = await poolPromise;
@@ -143,38 +143,38 @@ const getPendingCount = async (req, res) => {
             .query(`SELECT COUNT(*) AS cnt FROM dbo.role_requests WHERE status = 'pending'`);
         res.status(200).json({ success: true, pending: result.recordset[0].cnt });
     } catch (error) {
-        console.error('Lỗi khi lấy numărul yêu cau chờ duyệt:', error);
+        console.error('Lỗi khi lấy số lượng yêu cầu chờ duyệt:', error);
         res.status(500).json({ success: false, message: 'Lỗi hệ thống.', error: error.message });
     }
 };
 
-// 6. PUT /api/role-requests/:id/approve — ADMIN: duyệt yêu càu + cập nhăță role_id în Users
+// 6. PUT /api/role-requests/:id/approve 
 const approveRequest = async (req, res) => {
     try {
         const adminId = req.user?.userId;
         const requestId = parseInt(req.params.id, 10);
         if (!requestId) {
-            return res.status(400).json({ success: false, message: 'ID yêu cau không hợp lệ.' });
+            return res.status(400).json({ success: false, message: 'ID yêu cầu không hợp lệ.' });
         }
 
         const pool = await poolPromise;
 
-        // 1. Lấy yêu cau ângă psăndí
+        // 1. Lấy yêu cầu đang chờ duyệt để biết user_id và requested_role_id
         const row = await pool.request()
             .input('id', sql.Int, requestId)
             .query(`SELECT user_id, requested_role_id FROM dbo.role_requests WHERE request_id = @id AND status = 'pending'`);
         if (row.recordset.length === 0) {
-            return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cau ângă chờ duyệt.' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu chờ duyệt.' });
         }
         const { user_id, requested_role_id } = row.recordset[0];
 
-        // 2. Actualămăă rôle_id în Users (aceșa cấpăquy familiară în spec)
+        // 2. Cập nhật role_id trong bảng Users
         await pool.request()
             .input('user_id', sql.Int, user_id)
             .input('role_id', sql.Int, requested_role_id)
             .query(`UPDATE dbo.users SET role_id = @role_id WHERE user_id = @user_id`);
 
-        // 3. Markă livșă ângă aprobăă jaçără după succes ca baza
+        // 3. Cập nhật trạng thái yêu cầu thành approved
         await pool.request()
             .input('id', sql.Int, requestId)
             .input('admin_id', sql.Int, adminId)
@@ -191,13 +191,13 @@ const approveRequest = async (req, res) => {
     }
 };
 
-// 7. PUT /api/role-requests/:id/reject — ADMIN: respingă yêu cau
+// 7. PUT /api/role-requests/:id/reject — ADMIN: respingere yêu cầu (cập nhật role_id trong Users)
 const rejectRequest = async (req, res) => {
     try {
         const adminId = req.user?.userId;
         const requestId = parseInt(req.params.id, 10);
         if (!requestId) {
-            return res.status(400).json({ success: false, message: 'ID yêu cau không hợp lệ.' });
+            return res.status(400).json({ success: false, message: 'ID yêu cầu không hợp lệ.' });
         }
 
         const pool = await poolPromise;
@@ -211,12 +211,12 @@ const rejectRequest = async (req, res) => {
             `);
 
         if (upd.rowsAffected[0] === 0) {
-            return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cau ângă chờ duyệt.' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu chờ duyệt.' });
         }
-        res.status(200).json({ success: true, message: 'Yêu cau a fost respingă.' });
+        res.status(200).json({ success: true, message: 'Yêu cầu đã được respingere.' });
     } catch (error) {
         console.error('Lỗi khi respinge yêu cau vai trò:', error);
-        res.status(500).json({ success: false, message: 'Lỗi hệ thống khi respinge yêu cau.', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi hệ thống khi respinge yêu cầu.', error: error.message });
     }
 };
 
