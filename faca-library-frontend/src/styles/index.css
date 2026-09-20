@@ -1,0 +1,95 @@
+﻿/* Tailwind CSS (v4) Ã¢â‚¬â€ utility framework */
+@import "tailwindcss";
+
+/* ==========================================================
+   GLOBAL FONT CONFIGURATION Ã¢â‚¬â€ FACA & Inventory Library
+   ========================================================== */
+
+:root {
+  /* Font chÃƒÂ­nh toÃƒÂ n hÃ¡Â»â€¡ thÃ¡Â»â€˜ng */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text: #4b5563;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --accent: #aa3bff;
+}
+
+/* ÃƒÂp dÃ¡Â»Â¥ng font chÃƒÂ­nh + box-sizing cho MÃ¡Â»Å’I phÃ¡ÂºÂ§n tÃ¡Â»Â­ */
+* {
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* LÃƒÂ m mÃ¡Â»â€¹n chÃ¡Â»Â¯, chÃ¡Â»â€˜ng nhÃƒÂ²e dÃ¡ÂºÂ¥u tiÃ¡ÂºÂ¿ng ViÃ¡Â»â€¡t */
+body,
+input,
+button,
+select,
+textarea {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* ==========================================================
+   TIÃƒÅ U Ã„ÂÃ¡Â»â‚¬ & TÃƒÅ N NGÃ†Â¯Ã¡Â»Å“I DÃƒâ„¢NG Ã¢â‚¬â€ nÃƒÂ©t Ã„â€˜Ã¡ÂºÂ­m, sÃ¡ÂºÂ¯c nÃƒÂ©t, tÃ†Â°Ã†Â¡ng phÃ¡ÂºÂ£n cao
+   ========================================================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 {
+  font-weight: 800;
+}
+
+p {
+  margin: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+}
+
+/* ===== Toast (ToastProvider) - animation trượt vào từ phải ===== */
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.toast-slide-in {
+    animation: toast-slide-in 0.25s ease-out both;
+}

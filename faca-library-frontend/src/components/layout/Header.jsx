@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User, Menu, X, ShieldCheck, Search, Loader, ChevronDown, Zap, Eye, Wrench, KeyRound, FileSpreadsheet, Boxes } from 'lucide-react';
 import axios from 'axios';
-import '../../Styles/Header.css';
+import '../../styles/Header.css';
 
 const Header = () => {
     const { t } = useTranslation();
@@ -21,7 +21,7 @@ const Header = () => {
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-    // Gọi API lấy thông tin cá nhân khi mount
+    // Gọi API lấy thông tin cá nhân
     useEffect(() => {
         const fetchUser = async () => {
             const token = localStorage.getItem('token');
@@ -35,17 +35,14 @@ const Header = () => {
                 const res = await axios.get(`${API_URL}/auth/me`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                // Nếu API thành công -> dùng dữ liệu user từ Backend
                 const data = res.data?.user || res.data;
                 setUser(data);
-                // Đồng bộ lại bản ghi user trong LocalStorage
                 if (data) {
                     localStorage.setItem('user', JSON.stringify(data));
                 }
             } catch (err) {
                 console.error('Không thể xác thực token qua API:', err);
-                // Fallback: nếu API chưa có/lỗi -> lấy dữ liệu tạm từ localStorage
-                // (KHÔNG đặt user = null vì sẽ làm hiện nút "Sign In" nhấp nháy)
+
                 const cachedUser = localStorage.getItem('user');
                 if (cachedUser) {
                     try {
@@ -69,7 +66,7 @@ const Header = () => {
         return () => window.removeEventListener('user:updated', handleUserUpdated);
     }, [API_URL]);
 
-    // Quản trị: lấy numărul yêu cau ângă chờ duyệt (că badge în Admin dropdown)
+    // Quản trị:  Đếm số lượng yêu cầu cấp quyền đang chờ duyệt (pending) để hiển thị badge trên menu Admin
     useEffect(() => {
         const loadPendingCount = async () => {
             const token = localStorage.getItem('token');

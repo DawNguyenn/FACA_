@@ -21,9 +21,13 @@ async function getInventoryList(req, res) {
     const offset = (page - 1) * limit;
 
     try {
-        // Count total rows
+        // Count total rows (ProjectName/MaterialName nằm ở bảng JOIN, không phải InventoryLots)
         const countSql = search
-            ? 'SELECT COUNT(*) AS total FROM dbo.InventoryLots WHERE LotCode LIKE @search OR ProjectName LIKE @search OR MaterialName LIKE @search'
+            ? `SELECT COUNT(*) AS total
+               FROM dbo.InventoryLots il
+               INNER JOIN dbo.Projects p ON p.ProjectId = il.ProjectID
+               INNER JOIN dbo.Materials m ON m.MaterialID = il.MaterialID
+               WHERE il.LotCode LIKE @search OR p.ProjectName LIKE @search OR m.MaterialName LIKE @search`
             : 'SELECT COUNT(*) AS total FROM dbo.InventoryLots';
 
         const countRes = await pool.request()
@@ -33,10 +37,21 @@ async function getInventoryList(req, res) {
         const totalRows = countRes.recordset[0].total;
         const totalPages = Math.ceil(totalRows / limit);
 
-        // Data query with pagination
-        const dataSql = search
-            ? `SELECT TOP (@limit) il.InventoryLotID, il.LotCode, il.ReceiveDate, il.ShipmentQty, il.StockQty, il.QualityHoldQty, il.IQAScrapQty, il.DRI, il.BillNo, il.InvoiceNo, il.DRINo, il.CreatedAt, p.ProjectName, b.BuildCode, m.MaterialName, v.VendorName FROM dbo.InventoryLots il INNER JOIN dbo.Projects p ON p.ProjectID = il.ProjectID INNER JOIN dbo.Builds b ON b.BuildID = il.BuildID INNER JOIN dbo.Materials m ON m.MaterialID = il.MaterialID LEFT JOIN dbo.Vendors v ON v.VendorID = m.VendorID WHERE il.LotCode LIKE @search OR p.ProjectName LIKE @search OR m.MaterialName LIKE @search ORDER BY il.CreatedAt DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`
-            : `SELECT TOP (@limit) il.InventoryLotID, il.LotCode, il.ReceiveDate, il.ShipmentQty, il.StockQty, il.QualityHoldQty, il.IQAScrapQty, il.DRI, il.BillNo, il.InvoiceNo, il.DRINo, il.CreatedAt, p.ProjectName, b.BuildCode, m.MaterialName, v.VendorName FROM dbo.InventoryLots il INNER JOIN dbo.Projects p ON p.ProjectID = il.ProjectID INNER JOIN dbo.Builds b ON b.BuildID = il.BuildID INNER JOIN dbo.Materials m ON m.MaterialID = il.MaterialID LEFT JOIN dbo.Vendors v ON v.VendorID = m.VendorID ORDER BY il.CreatedAt DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+        // Data query with pagination (không dùng TOP chung với OFFSET)
+        // Schema thật: InventoryLots(CreateDate, DRI, không có QualityHoldQty/DRINo),
+        // Projects.ProjectId, Builds.BuildId, Materials.MaterialID, Vendors.VendorId
+        const dataSql = `SELECT il.InventoryLotID, il.LotCode, il.ReceiveDate, il.ShipmentQty,
+                                il.StockQty, il.IQAScrapQty, il.DRI, il.BillNo, il.InvoiceNo,
+                                il.Remark, il.CreateDate,
+                                p.ProjectName, b.BuildCode, m.MaterialName, v.VendorName
+                         FROM dbo.InventoryLots il
+                         INNER JOIN dbo.Projects p  ON p.ProjectId  = il.ProjectID
+                         INNER JOIN dbo.Builds b    ON b.BuildId    = il.BuildID
+                         INNER JOIN dbo.Materials m ON m.MaterialID = il.MaterialID
+                         LEFT JOIN dbo.Vendors v    ON v.VendorId   = m.VendorID
+                         ${search ? 'WHERE il.LotCode LIKE @search OR p.ProjectName LIKE @search OR m.MaterialName LIKE @search' : ''}
+                         ORDER BY il.InventoryLotID DESC
+                         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
 
         const dataReq = pool.request();
         dataReq.input('limit', sql.Int, limit);
@@ -58,13 +73,12 @@ async function getInventoryList(req, res) {
             ReceiveDate: row.ReceiveDate ? new Date(row.ReceiveDate).toISOString().split('T')[0] : '',
             ShipmentQty: row.ShipmentQty,
             StockQty: row.StockQty,
-            QualityHoldQty: row.QualityHoldQty || 0,
             IQAScrapQty: row.IQAScrapQty || 0,
             DRI: row.DRI,
             BillNo: row.BillNo,
             InvoiceNo: row.InvoiceNo,
-            DRINo: row.DRINo,
-            CreatedAt: row.CreatedAt ? new Date(row.CreatedAt).toISOString() : '',
+            Remark: row.Remark,
+            CreateDate: row.CreateDate ? new Date(row.CreateDate).toISOString() : '',
         }));
 
         res.json({

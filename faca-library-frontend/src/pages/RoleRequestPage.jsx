@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { ShieldCheck, Send, Loader, CheckCircle2, Clock, Ban } from 'lucide-react';
-import '../Styles/Pages.css';
+import '../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 

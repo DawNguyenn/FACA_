@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FileText, AlertCircle, Package, BookOpen, Boxes, ArrowRight } from 'lucide-react';
-import '../Styles/Home.css';
+import '../styles/Home.css';
 
 const Home = () => {
     const navigate = useNavigate();

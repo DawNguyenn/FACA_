@@ -4,7 +4,7 @@ import { Camera, Save, Loader, User, Pencil, Languages } from 'lucide-react';
 import { getMyProfile, updateMyProfile, uploadAvatar } from '../services/profileService';
 import { LANGUAGES } from '../i18n';
 import i18n from '../i18n';
-import '../Styles/Profile.css';
+import '../styles/Profile.css';
 
 // Áp dụng ngôn ngữ cho toàn ứng dụng + lưu vào localStorage (module-level, tránh TDZ)
 // Ghi key 'app_language' (chuẩn mới) + 'language' (tương thích ngược dữ liệu cũ)

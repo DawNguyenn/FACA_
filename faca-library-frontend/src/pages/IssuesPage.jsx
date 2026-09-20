@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Zap, Eye, Wrench, Layers, Loader, AlertCircle } from 'lucide-react';
-import '../Styles/Pages.css';
+import '../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 

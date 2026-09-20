@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
-import './index.css';
+import './styles/index.css';
 // ---- AZURE AD (SSO) — TẠM COMMENT để chia sẻ qua mạng LAN (--host) ----
 // MSAL yêu cầu redirect URI đăng ký chính xác trên Azure Portal,
 // khi mở từ IP mạng LAN (VD: http://192.168.x.x:5173) sẽ bị từ chối.

@@ -223,3 +223,194 @@ exports.getMe = async (req, res) => {
         });
     }
 };
+
+// 4. Quên mật khẩu (POST /api/auth/forgot-password)
+// Sinh mã OTP 6 số, lưu SHA256 hash vào bảng password_resets (hết hạn sau 5 phút)
+// rồi gửi email chứa mã OTP tới người dùng (xem mailer.js → sendOtpEmail)
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({
+            success: false,
+            message: 'Vui lòng nhập email.'
+        });
+    }
+
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('email', sql.VarChar, email.trim())
+            .query('SELECT user_id, email, full_name, password_hash FROM dbo.users WHERE email = @email');
+
+        // Trả về message chung để tránh dò email tồn tại trong hệ thống
+        const GENERIC_MESSAGE = 'Nếu email của bạn tồn tại trong hệ thống, chúng tôi đã gửi mã OTP đặt lại mật khẩu. Vui lòng kiểm tra hộp thư (kể cả mục Spam).';
+
+        if (result.recordset.length === 0) {
+            return res.json({ success: true, message: GENERIC_MESSAGE });
+        }
+
+        const user = result.recordset[0];
+
+        // Tài khoản Azure AD (không có mật khẩu nội bộ) → không đặt lại được
+        if (!user.password_hash) {
+            return res.json({ success: true, message: GENERIC_MESSAGE });
+        }
+
+        // Sinh mã OTP 6 chữ số và lưu SHA256 hash vào DB (không lưu mã gốc)
+        const crypto = require('crypto');
+        const otp = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+        const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+        // Vô hiệu hóa các OTP cũ của user này, rồi tạo OTP mới (expires 5 phút)
+        await pool.request()
+            .input('user_id', sql.Int, user.user_id)
+            .query('DELETE FROM dbo.password_resets WHERE user_id = @user_id');
+
+        await pool.request()
+            .input('user_id', sql.Int, user.user_id)
+            .input('token_hash', sql.VarChar, otpHash)
+            .query(`
+                INSERT INTO dbo.password_resets (user_id, token_hash, expires_at, created_at, attempts)
+                VALUES (@user_id, @token_hash, DATEADD(MINUTE, 5, GETDATE()), GETDATE(), 0)
+            `);
+
+        // Gửi email chứa mã OTP
+        try {
+            const { sendOtpEmail } = require('./mailer');
+            const mailResult = await sendOtpEmail(user.email, otp);
+            // sendOtpEmail không throw mà trả về { success, message }
+            if (mailResult && mailResult.success === false) {
+                throw new Error(mailResult.message || 'Gửi email thất bại');
+            }
+        } catch (mailError) {
+            console.error('Lỗi gửi email đặt lại mật khẩu:', mailError);
+            return res.status(500).json({
+                success: false,
+                message: 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.'
+            });
+        }
+
+        return res.json({ success: true, message: GENERIC_MESSAGE });
+
+    } catch (error) {
+        console.error('Lỗi ForgotPassword:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Lỗi hệ thống, vui lòng thử lại sau.'
+        });
+    }
+};
+
+// 5. Đặt lại mật khẩu (POST /api/auth/reset-password)
+// Body: { email, password, otp }  HOẶC  { email, password, token }
+//  - otp  : mã OTP 6 số gửi qua email (hiệu lực 5 phút)
+//  - token: token trong link email (hiệu lực 15 phút)
+// Sai quá 5 lần → hủy OTP, người dùng phải yêu cầu lại.
+exports.resetPassword = async (req, res) => {
+    const { email, password } = req.body;
+    // Chấp nhận cả `otp` (mã 6 số) và `token` (link email)
+    const code = (req.body.otp || req.body.token || '').toString().trim();
+
+    if (!email || !code || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Thiếu thông tin đặt lại mật khẩu.'
+        });
+    }
+
+    if (password.length < 6) {
+        return res.status(400).json({
+            success: false,
+            message: 'Mật khẩu mới phải có ít nhất 6 ký tự.'
+        });
+    }
+
+    try {
+        const crypto = require('crypto');
+        const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+
+        const pool = await poolPromise;
+
+        // Tìm user theo email
+        const userResult = await pool.request()
+            .input('email', sql.VarChar, email.trim())
+            .query('SELECT user_id, is_active FROM dbo.users WHERE email = @email');
+
+        if (userResult.recordset.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Mã đặt lại mật khẩu không hợp lệ.'
+            });
+        }
+
+        const user = userResult.recordset[0];
+
+        // Kiểm tra mã hợp lệ và chưa hết hạn
+        const codeResult = await pool.request()
+            .input('user_id', sql.Int, user.user_id)
+            .input('token_hash', sql.VarChar, codeHash)
+            .query(`
+                SELECT reset_id FROM dbo.password_resets
+                WHERE user_id = @user_id
+                  AND token_hash = @token_hash
+                  AND expires_at > GETDATE()
+            `);
+
+        if (codeResult.recordset.length === 0) {
+            // Đếm số lần nhập sai: quá 5 lần thì hủy mã, bắt người dùng yêu cầu lại
+            const bumped = await pool.request()
+                .input('user_id', sql.Int, user.user_id)
+                .query(`
+                    UPDATE dbo.password_resets
+                    SET attempts = ISNULL(attempts, 0) + 1
+                    OUTPUT INSERTED.attempts
+                    WHERE user_id = @user_id AND expires_at > GETDATE()
+                `);
+
+            const attempts = bumped.recordset[0] ? bumped.recordset[0].attempts : null;
+
+            if (attempts !== null && attempts >= 5) {
+                await pool.request()
+                    .input('user_id', sql.Int, user.user_id)
+                    .query('DELETE FROM dbo.password_resets WHERE user_id = @user_id');
+
+                return res.status(400).json({
+                    success: false,
+                    message: 'Bạn đã nhập sai quá nhiều lần. Vui lòng yêu cầu gửi lại mã OTP.'
+                });
+            }
+
+            return res.status(400).json({
+                success: false,
+                message: 'Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu lại.'
+            });
+        }
+
+        // Cập nhật mật khẩu mới
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(password, salt);
+
+        await pool.request()
+            .input('user_id', sql.Int, user.user_id)
+            .input('password_hash', sql.VarChar, password_hash)
+            .query('UPDATE dbo.users SET password_hash = @password_hash WHERE user_id = @user_id');
+
+        // Xóa OTP/token sau khi dùng (chỉ dùng được một lần)
+        await pool.request()
+            .input('user_id', sql.Int, user.user_id)
+            .query('DELETE FROM dbo.password_resets WHERE user_id = @user_id');
+
+        return res.json({
+            success: true,
+            message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.'
+        });
+
+    } catch (error) {
+        console.error('Lỗi ResetPassword:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Lỗi hệ thống, vui lòng thử lại sau.'
+        });
+    }
+};

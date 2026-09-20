@@ -1,10 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Home from './pages/Home';
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import ManageUsers from './pages/Admin/ManageUsers';
-import AdminRoleRequests from './pages/Admin/AdminRoleRequestsPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminRoleRequests from './pages/admin/AdminRoleRequestsPage';
 import ProfilePage from './pages/Profile';
 import IssuesPage from './pages/IssuesPage';
 import RoleRequestPage from './pages/RoleRequestPage';
@@ -12,6 +13,8 @@ import WarehouseExcelViewer from './pages/WarehouseExcelViewer';
 import InventoryLotsPage from './pages/InventoryLotsPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
+import ToastProvider from './components/common/ToastProvider';
+import { isAdmin } from './services/authUtils';
 
 // Component layout chứa Header, Nội dung chính và Footer
 const MainLayout = ({ children }) => {
@@ -35,13 +38,31 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
+// Component bảo vệ Route dành cho Admin (Bắt buộc đăng nhập + có quyền Admin)
+// Người dùng không có quyền Admin sẽ bị chuyển hướng về trang chủ
+const AdminRoute = ({ children }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        return <Navigate to="/login" replace />;
+    }
+    if (!isAdmin()) {
+        return <Navigate to="/" replace />;
+    }
+    return children;
+};
+
 function App() {
     return (
+        <ToastProvider>
         <Router>
             <Routes>
                 {/* Route Đăng nhập & Đăng ký (Không chứa Header / Footer) */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+
+                {/* Route Quên mật khẩu & Đặt lại mật khẩu (truy cập từ link trong email) */}
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* Route Trang chủ & các trang nghiệp vụ (Được bảo vệ + Có Header & Footer) */}
                 <Route 
@@ -55,39 +76,39 @@ function App() {
                     } 
                 />
 
-                {/* Admin: User Dashboard */}
+                {/* Admin: User Dashboard (chỉ dành cho Admin) */}
                 <Route
                     path="/admin"
                     element={
-                        <ProtectedRoute>
+                        <AdminRoute>
                             <MainLayout>
                                 <AdminDashboard />
                             </MainLayout>
-                        </ProtectedRoute>
+                        </AdminRoute>
                     }
                 />
 
-                {/* Admin: Quản lý người dòng */}
+                {/* Admin: Quản lý người dùng (chỉ dành cho Admin) */}
                 <Route
                     path="/admin/users"
                     element={
-                        <ProtectedRoute>
+                        <AdminRoute>
                             <MainLayout>
-                                <ManageUsers />
+                                <AdminDashboard />
                             </MainLayout>
-                        </ProtectedRoute>
+                        </AdminRoute>
                     }
                 />
 
-                {/* Admin: Quản lý yêu cau cấpăquyenne */}
+                {/* Admin: Quản lý yêu cầu cấp quyền (chỉ dành cho Admin) */}
                 <Route
                     path="/admin/role-requests"
                     element={
-                        <ProtectedRoute>
+                        <AdminRoute>
                             <MainLayout>
                                 <AdminRoleRequests />
                             </MainLayout>
-                        </ProtectedRoute>
+                        </AdminRoute>
                     }
                 />
 
@@ -155,6 +176,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
+        </ToastProvider>
     );
 }
 

@@ -1,6 +1,6 @@
 import { ShieldCheck, Cpu, Code } from 'lucide-react';
 import { useSmartTranslate } from '../../hooks/useSmartTranslate';
-import '../../Styles/Footer.css';
+import '../../styles/Footer.css';
 
 const Footer = () => {
     const { smartT } = useSmartTranslate();
