@@ -82,6 +82,8 @@ export default function WarehouseExcelViewer() {
         totalRows,
         search,
         setSearch,
+        sort,
+        handleSort,
         refresh,
     } = useWarehouseRows({ source, onLoaded: handleRowsLoaded });
 
@@ -302,6 +304,9 @@ export default function WarehouseExcelViewer() {
                 onStartEdit={startEdit}
                 onCancelEdit={cancelEdit}
                 onSaveEdit={saveEdit}
+                sortBy={sort.by}
+                sortDir={sort.dir}
+                onSort={handleSort}
             />
 
             {/* Footer phân trang */}

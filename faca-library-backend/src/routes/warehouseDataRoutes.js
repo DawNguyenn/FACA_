@@ -98,7 +98,7 @@ router.get('/tongton', authMiddleware, listStagingTongTon);
 router.get('/sources', authMiddleware, listSourcesHandler);
 
 /**
- * Inline editing trên dữ liệu staging — CHỈ Admin (role_id=1) và Warehouse (role_id=5):
+ * Inline editing trên dữ liệu staging — CHỈ Admin (role_id=1) và Warehouse (role_id=4):
  *   PUT    /api/warehouse/:source/rows/:id          — sửa 1 dòng (theo StagingID)
  *   POST   /api/warehouse/:source/rows              — thêm 1 dòng mới
  *   POST   /api/warehouse/:source/columns           — thêm cột mới động (ALTER TABLE + metadata)
@@ -108,7 +108,7 @@ router.get('/sources', authMiddleware, listSourcesHandler);
  * Sheet moi tao qua POST /sources dung chung cac route generic nay,
  * khong can them route moi trong code.
  */
-const warehouseEditor = requireRoles([1, 5]);
+const warehouseEditor = requireRoles([1, 4]);
 router.post('/sources', authMiddleware, warehouseEditor, createSourceHandler);
 router.delete('/sources/:source', authMiddleware, warehouseEditor, deleteSourceHandler);
 router.post('/:source/bulk-save', authMiddleware, warehouseEditor, bulkSaveHandler);

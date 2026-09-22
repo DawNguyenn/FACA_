@@ -11,9 +11,13 @@ const getAuthHeaders = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-/** GET trả về JSON body (đã kèm Authorization nếu có token) */
-const getJSON = async (url) => {
-    const { data } = await axios.get(url, { headers: getAuthHeaders() });
+/**
+ * GET trả về JSON body (đã kèm Authorization nếu có token).
+ * @param {string} url
+ * @param {Object} [config] — cấu hình axios bổ sung, vd { signal } để huỷ request cũ khi bấm sort liên tục
+ */
+const getJSON = async (url, config = {}) => {
+    const { data } = await axios.get(url, { headers: getAuthHeaders(), ...config });
     return data;
 };
 
@@ -30,18 +34,27 @@ const sendJSON = async (method, url, body) => {
 export const fetchWarehouseSources = () => getJSON(`${API_URL}/warehouse/sources`);
 
 /**
- * GET /warehouse/:source?page&limit&search — dữ liệu 1 trang của sheet (SQL Server).
+ * GET /warehouse/:source?page&limit&search&sortBy&sortDir — dữ liệu 1 trang của sheet (SQL Server).
  * @param {string} source — key sheet (vd 'sbn27')
- * @param {{page?: number, limit?: number, search?: string}} opts
+ * @param {{page?: number, limit?: number, search?: string, sortBy?: string, sortDir?: 'asc'|'desc', signal?: AbortSignal}} opts
  * @returns {Promise<{success, columns, customColumns, data, pagination, message}>}
  */
-export const fetchWarehouseRows = (source, { page = 1, limit = PAGE_LIMIT, search = '' } = {}) => {
+export const fetchWarehouseRows = (
+    source,
+    { page = 1, limit = PAGE_LIMIT, search = '', sortBy = '', sortDir = '', signal } = {},
+) => {
     const params = new URLSearchParams({
         page: String(page),
         limit: String(limit),
     });
     if (search) params.set('search', search);
-    return getJSON(`${API_URL}/warehouse/${source}?${params.toString()}`);
+    // Chỉ gửi tham số sắp xếp khi người dùng đã click 1 cột (backend whitelist lại lần nữa)
+    if (sortBy) {
+        params.set('sortBy', sortBy);
+        params.set('sortDir', sortDir === 'desc' ? 'desc' : 'asc');
+    }
+    // `signal` cho phép huỷ request đang chờ khi người dùng bấm sort / đổi trang / gõ tìm kiếm liên tục
+    return getJSON(`${API_URL}/warehouse/${source}?${params.toString()}`, { signal });
 };
 
 /**

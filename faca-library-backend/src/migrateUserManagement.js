@@ -44,12 +44,12 @@ const statements = [
     // 4a. Vai trò Engineer
     `IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE role_name = 'Engineer')
         INSERT INTO dbo.roles (role_name, description) VALUES ('Engineer', N'Kỹ sư / Nhân viên kỹ thuật');`,
-    // 4b. Vai trò QC
-    `IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE role_name = 'QC')
-        INSERT INTO dbo.roles (role_name, description) VALUES ('QC', N'Kiểm soát chất lượng');`,
-    // 4c. Vai trò Warehouse
+    // 4b. Vai trò QA (trước đây đặt tên 'QC' — chấp nhận cả hai để không tạo trùng)
+    `IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE role_name IN ('QA', 'QC'))
+        INSERT INTO dbo.roles (role_name, description) VALUES ('QA', N'Kiểm soát chất lượng');`,
+    // 4c. Vai trò WareHouse (so khớp không phân biệt hoa/thường nên không tạo trùng 'Warehouse')
     `IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE role_name = 'Warehouse')
-        INSERT INTO dbo.roles (role_name, description) VALUES ('Warehouse', N'Kho vận / Logistics');`,
+        INSERT INTO dbo.roles (role_name, description) VALUES ('WareHouse', N'Kho vận / Logistics');`,
     // 4d. Vai trò User
     `IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE role_name = 'User')
         INSERT INTO dbo.roles (role_name, description) VALUES ('User', N'Người dùng thông thường');`,

@@ -105,6 +105,14 @@ export const NUMERIC_COLS = new Set([
     'So_pack', 'Tong_ton',
 ]);
 
+/**
+ * Cột ngày (Change_Date, Received_Date, Output_date, Xuat_1_Date, ChangeDate...).
+ * Dùng để mặc định sắp xếp "NGÀY MỚI NHẤT LÊN ĐẦU" khi người dùng click header cột này
+ * (backend cũng so sánh theo giá trị ngày, không so sánh chuỗi).
+ * Cố ý KHÔNG khớp các từ thường kết thúc bằng 'date' (vd 'Candidate'/'Update').
+ */
+export const isDateColumn = (col) => /(?:^|[_ ])date$|Date$/.test(String(col));
+
 // Template dự phòng cho modal "Tạo sheet mới" khi backend chưa trả về danh sách templates
 export const FALLBACK_TEMPLATES = [
     { value: 'npi', label: 'npi — Dự án NPI' },

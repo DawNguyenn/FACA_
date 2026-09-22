@@ -310,6 +310,58 @@
 .role-request-status.approved { background-color: #d1fae5; color: #047857; }
 .role-request-status.rejected { background-color: #fee2e2; color: #b91c1c; }
 
+/* Nhóm phải của từng yêu cầu: badge trạng thái + nút Xóa */
+.role-request-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.role-request-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    background-color: #ffffff;
+    color: #dc2626;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.role-request-delete:hover { background-color: #fef2f2; border-color: #fca5a5; }
+.role-request-delete:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Trạng thái xác nhận (bấm lần 2 để xóa thật) */
+.role-request-confirm { display: inline-flex; align-items: center; gap: 4px; }
+
+.role-request-delete.confirm {
+    background-color: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+}
+
+.role-request-delete.confirm:hover { background-color: #b91c1c; border-color: #b91c1c; }
+
+.role-request-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.role-request-cancel:hover { background-color: #f3f4f6; }
+.role-request-cancel:disabled { opacity: 0.55; cursor: not-allowed; }
+
 /* ================================================================
    AdminRoleRequestsPage — Quản lý yêu cau cấpăquyenne (duyệt/từ chức)
    ================================================================ */

@@ -1,236 +1,30 @@
-/* ===== Trang cá nhân (Profile) ===== */
+/* ================================================================
+   Profile — Trang Hồ sơ cá nhân
+   Toàn bộ khối nội dung được căn giữa theo chiều ngang màn hình
+   ================================================================ */
 
-.profile-page {
-    display: flex;
-    justify-content: center;
-    padding: 40px 16px;
-}
-
-.profile-card {
-    width: 100%;
-    max-width: 520px;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-    padding: 32px;
-}
-
-.profile-title {
-    margin: 0 0 4px;
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #111827;
-    letter-spacing: -0.02em;
-}
-
-.profile-subtitle {
-    margin: 0 0 24px;
-    font-size: 0.85rem;
-    color: #6b7280;
-}
-
-/* Thông báo */
-.profile-alert {
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    margin-bottom: 20px;
-}
-
-.alert-success {
-    background-color: #ecfdf5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
-}
-
-.alert-error {
-    background-color: #fef2f2;
-    color: #b91c1c;
-    border: 1px solid #fecaca;
-}
-
-/* Khu vực ảnh đại diện */
-.profile-avatar-section {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 24px;
-}
-
-.profile-avatar-wrapper {
-    position: relative;
-    width: 88px;
-    height: 88px;
-    flex-shrink: 0;
-}
-
-.profile-avatar-img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #e5e7eb;
-}
-
-.profile-avatar-placeholder {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background-color: #fff0f3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px dashed #f3c4c4;
-}
-
-.profile-avatar-edit {
-    position: absolute;
-    right: -2px;
-    bottom: -2px;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: 2px solid #ffffff;
-    background-color: #c00000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.profile-avatar-edit:hover {
-    background-color: #9e0000;
-}
-
-.profile-avatar-hint {
+/* --- Khung bao ngoài: căn giữa theo trục dọc --- */
+.profile-container {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-}
-
-.profile-avatar-choose-btn {
-    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    background-color: #ffffff;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #374151;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.profile-avatar-choose-btn:hover {
-    background-color: #f9fafb;
-}
-
-.profile-avatar-note {
-    font-size: 0.72rem;
-    color: #9ca3af;
-}
-
-/* Trường dữ liệu */
-.profile-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 18px;
-}
-
-.profile-field label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #374151;
-    letter-spacing: -0.01em;
-}
-
-.profile-input {
     width: 100%;
-    padding: 10px 14px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #111827;
-    outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    min-height: 100%;
+    padding: 40px 20px 64px;
     box-sizing: border-box;
 }
 
-.profile-input:focus {
-    border-color: #c00000;
-    box-shadow: 0 0 0 3px rgba(192, 0, 0, 0.08);
-}
-
-.profile-input::placeholder {
-    color: #9ca3af;
-}
-
-/* Select ngôn ngữ */
-.profile-select {
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 34px;
-    cursor: pointer;
-}
-
-.profile-field-hint {
-    font-size: 0.72rem;
-    color: #9ca3af;
-}
-
-/* Nút hành động */
-.profile-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 8px;
-}
-
-.profile-save-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 22px;
-    background-color: #c00000;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-.profile-save-btn:hover:not(:disabled) {
-    background-color: #9e0000;
-}
-
-.profile-save-btn:active:not(:disabled) {
-    transform: scale(0.98);
-}
-
-.profile-save-btn:disabled {
-    background-color: #e5e7eb;
-    color: #9ca3af;
-    cursor: not-allowed;
-}
-
-/* Trạng thái tải dữ liệu */
+/* --- Trạng thái đang tải --- */
 .profile-loading {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 12px;
+    width: 100%;
+    min-height: 60vh;
     color: #6b7280;
     font-size: 0.9rem;
-    padding: 60px 0;
 }
 
 .profile-spinner {
@@ -238,121 +32,380 @@
 }
 
 @keyframes profile-spin {
-    from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
 
-@media (max-width: 480px) {
-    .profile-card {
-        padding: 24px 20px;
-    }
-
-    .profile-avatar-section {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+/* --- Thông báo thành công / lỗi --- */
+.profile-message {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto 16px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: center;
+    box-sizing: border-box;
 }
 
-/* ===== Chế độ Xem (Read-only) ===== */
+.profile-message-success {
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #047857;
+}
 
-.profile-view {
+.profile-message-error {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+/* --- Thẻ nội dung chính: luôn nằm giữa màn hình --- */
+.profile-card {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    box-sizing: border-box;
+}
+
+.profile-title {
+    margin: 0 0 24px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #111827;
+    text-align: center;
+}
+
+/* ================================================================
+   CHẾ ĐỘ CHỈNH SỬA (FORM)
+   ================================================================ */
+.profile-form {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 20px;
 }
 
-.profile-view-avatar .profile-avatar-img,
-.profile-view-avatar .profile-avatar-placeholder {
-    width: 120px;
-    height: 120px;
+/* --- Khối nhập URL ảnh đại diện --- */
+.profile-avatar-section {
+    display: flex;
+    justify-content: center;
 }
 
-.profile-view-fields {
-    width: 100%;
+.profile-avatar-input-group {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 6px;
+    width: 100%;
 }
 
-.profile-view-row {
-    padding: 12px 14px;
-    background-color: #f9fafb;
-    border: 1px solid #eef0f3;
-    border-radius: 8px;
-}
-
-.profile-view-label {
-    display: block;
-    font-size: 0.72rem;
+.profile-avatar-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
     font-weight: 700;
-    color: #9ca3af;
+    color: #6b7280;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    margin-bottom: 4px;
+    letter-spacing: 0.04em;
 }
 
-.profile-view-value {
-    margin: 0;
+.profile-input-hint {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* Modifier: ô nhập URL ảnh (dùng kèm .profile-input) */
+.profile-avatar-input {
+    font-size: 0.875rem;
+    word-break: break-all;
+}
+
+/* --- Các trường trong form --- */
+.profile-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.profile-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.profile-input,
+.profile-select {
+    width: 100%;
+    padding: 11px 14px;
     font-size: 0.95rem;
-    font-weight: 600;
     color: #111827;
-    word-break: break-word;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.profile-input:focus,
+.profile-select:focus {
+    border-color: #c00000;
+    box-shadow: 0 0 0 3px rgba(192, 0, 0, 0.12);
+}
+
+.profile-input:disabled,
+.profile-select:disabled {
+    background-color: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.profile-language-select {
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Nhóm nút hành động --- */
+.profile-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
 }
 
 .profile-actions-center {
-    justify-content: center;
-    width: 100%;
+    margin-top: 24px;
 }
 
-/* Nút Chỉnh sửa */
-.profile-edit-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 26px;
-    background-color: #ffffff;
-    border: 1.5px solid #c00000;
-    color: #c00000;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.profile-edit-btn:hover {
-    background-color: #c00000;
-    color: #ffffff;
-}
-
-/* Nút Hủy */
+/* ================================================================
+   NÚT BẤM
+   ================================================================ */
+.profile-edit-btn,
+.profile-save-btn,
 .profile-cancel-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 10px 22px;
+    min-width: 150px;
+    padding: 11px 22px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.profile-edit-btn {
+    color: #c00000;
+    background-color: #ffffff;
+    border: 1px solid #c00000;
+}
+
+.profile-edit-btn:hover {
+    color: #ffffff;
+    background-color: #c00000;
+}
+
+.profile-save-btn {
+    color: #ffffff;
+    background-color: #c00000;
+    border: 1px solid #c00000;
+}
+
+.profile-save-btn:hover:not(:disabled) {
+    background-color: #a30000;
+    border-color: #a30000;
+}
+
+.profile-cancel-btn {
+    color: #374151;
     background-color: #ffffff;
     border: 1px solid #d1d5db;
-    color: #374151;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
 }
 
 .profile-cancel-btn:hover:not(:disabled) {
+    color: #111827;
+    border-color: #9ca3af;
     background-color: #f9fafb;
 }
 
+.profile-save-btn:disabled,
 .profile-cancel-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.profile-actions {
-    gap: 10px;
+/* ================================================================
+   CHẾ ĐỘ XEM (VIEW)
+   ================================================================ */
+.profile-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
 }
 
+/* --- Ảnh đại diện --- */
+.profile-view-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 128px;
+    height: 128px;
+    margin: 0 auto 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+}
 
+.profile-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.profile-avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* --- Danh sách thông tin --- */
+.profile-view-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.profile-view-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    padding: 14px 18px;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-sizing: border-box;
+}
+
+.profile-view-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.profile-view-value {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    word-break: break-word;
+}
+
+.profile-url-value a {
+    color: #c00000;
+    font-weight: 500;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.profile-url-value a:hover {
+    text-decoration: underline;
+}
+
+/* --- Badge vai trò (chỉ xem, không sửa) --- */
+.profile-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background-color: #fef2f2;
+    color: #c00000;
+    border: 1px solid #fecaca;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+}
+
+.profile-role-badge svg {
+    flex-shrink: 0;
+}
+
+/* Khối vai trò ở chế độ sửa: viền nét đứt để thấy rõ là chỉ đọc */
+.profile-role-readonly {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background-color: #fafafa;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+
+.profile-role-desc {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 640px) {
+    .profile-container {
+        padding: 24px 14px 48px;
+    }
+
+    .profile-card {
+        padding: 22px 18px;
+        border-radius: 14px;
+    }
+
+    .profile-title {
+        font-size: 1.25rem;
+    }
+
+    .profile-view-avatar {
+        width: 104px;
+        height: 104px;
+        margin-bottom: 22px;
+    }
+
+    .profile-actions {
+        flex-direction: column-reverse;
+    }
+
+    .profile-edit-btn,
+    .profile-save-btn,
+    .profile-cancel-btn {
+        width: 100%;
+    }
+}

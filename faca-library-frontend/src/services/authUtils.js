@@ -10,32 +10,36 @@
  *   - roleid  (no case,     e.g. 1)
  *   - role    (string,      e.g. 'admin')
  *
- * Role ID mapping (matches backend dbo.roles):
- *   1 = Admin, 2 = Engineer, 3 = QC, 4 = Warehouse, 5 = User
+ * Role ID mapping (khớp đúng dbo.roles trong FACA_DB):
+ *   1 = Admin, 2 = Staff, 3 = Engineer, 4 = WareHouse, 5 = QA, 6 = User
  */
 
 export const ROLE_ID = {
     ADMIN: 1,
-    ENGINEER: 2,
-    QC: 3,
+    STAFF: 2,
+    ENGINEER: 3,
     WAREHOUSE: 4,
-    USER: 5,
+    QA: 5,
+    USER: 6,
 };
 
 export const ROLE_NAME = {
     1: 'Admin',
-    2: 'Engineer',
-    3: 'QC',
-    4: 'Warehouse',
-    5: 'User',
+    2: 'Staff',
+    3: 'Engineer',
+    4: 'WareHouse',
+    5: 'QA',
+    6: 'User',
 };
 
 // Reverse map: role name (lowercase) → role_id
 const ROLE_NAME_MAP = {
     admin: ROLE_ID.ADMIN,
+    staff: ROLE_ID.STAFF,
     engineer: ROLE_ID.ENGINEER,
-    qc: ROLE_ID.QC,
     warehouse: ROLE_ID.WAREHOUSE,
+    qa: ROLE_ID.QA,
+    qc: ROLE_ID.QA, // tương thích dữ liệu cũ từng ghi 'QC'
     user: ROLE_ID.USER,
 };
 

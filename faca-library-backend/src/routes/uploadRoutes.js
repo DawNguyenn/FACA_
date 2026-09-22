@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware');
-const { upload, uploadFile } = require('../controllers/uploadController');
+const { uploadFile } = require('../controllers/uploadController');
 
-// POST /api/upload — upload ảnh đại diện (JWT, multipart/form-data, field "file")
-router.post('/', authMiddleware, upload.single('file'), uploadFile);
+// POST /api/upload — nhận JSON { url }, trả về URL (cho phép gán URL ảnh trực tiếp)
+// Không cần multer vì không còn upload file
+router.post('/', authMiddleware, uploadFile);
 
 module.exports = router;

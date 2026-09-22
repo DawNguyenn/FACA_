@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck, AlertCircle, Cpu, Mail, Lock, CheckCircle2, FileText, Database, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Cpu, Mail, CheckCircle2, FileText, Database, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+import PasswordInput from '../../components/common/PasswordInput';
 import i18n from '../../i18n';
 import '../../styles/Auth.css';
 
@@ -180,16 +181,14 @@ const Login = () => {
                             </div>
 
                             <div className="auth-field-block">
-                                <div className={`auth-input-group ${fieldErrors.password ? 'input-has-error' : ''}`}>
-                                    <Lock size={18} color={fieldErrors.password ? '#c00000' : '#777'} className="auth-input-icon" />
-                                    <input 
-                                        type="password" 
-                                        placeholder={t('auth.passwordPlaceholder')} 
-                                        value={password}
-                                        onChange={handleInputChange(setPassword, 'password')}
-                                        className="auth-input"
-                                    />
-                                </div>
+                                {/* Ô mật khẩu có nút hiện/ẩn (con mắt) */}
+                                <PasswordInput
+                                    value={password}
+                                    onChange={handleInputChange(setPassword, 'password')}
+                                    placeholder={t('auth.passwordPlaceholder')}
+                                    hasError={!!fieldErrors.password}
+                                    autoComplete="current-password"
+                                />
                                 {fieldErrors.password && <span className="custom-field-error">{fieldErrors.password}</span>}
                             </div>
 

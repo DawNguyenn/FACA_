@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { ShieldCheck, Send, Loader, CheckCircle2, Clock, Ban } from 'lucide-react';
+import { ShieldCheck, Send, Loader, CheckCircle2, Clock, Ban, Trash2, X } from 'lucide-react';
 import '../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const ROLE_NAMES = { 1: 'Admin', 2: 'Engineer', 3: 'Leader' };
+// Map dự phòng khi API không trả role_name — khớp dbo.roles trong FACA_DB
+// (1=Admin, 2=Staff, 3=Engineer, 4=WareHouse, 5=QA, 6=User)
+const ROLE_NAMES = { 1: 'Admin', 2: 'Staff', 3: 'Engineer', 4: 'WareHouse', 5: 'QA', 6: 'User' };
 
 const RoleRequestPage = () => {
     const { t } = useTranslation();
@@ -19,6 +21,9 @@ const RoleRequestPage = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [message, setMessage] = useState(null);
+    // Xóa yêu cầu: id đang chờ xác nhận (bấm 2 bước tránh bấm nhầm) + id đang xóa
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+    const [removingId, setRemovingId] = useState(null);
 
     useEffect(() => {
         const load = async () => {
@@ -75,6 +80,25 @@ const RoleRequestPage = () => {
         }
     };
 
+    // XÓA 1 yêu cầu của tôi (DELETE /api/role-requests/:id)
+    const handleDelete = async (id) => {
+        setMessage(null);
+        setRemovingId(id);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`${API_URL}/role-requests/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setMyRequests((list) => list.filter((r) => r.request_id !== id));
+            setMessage({ type: 'success', text: t('pages.deleteRequestOk') });
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || err.message });
+        } finally {
+            setRemovingId(null);
+            setConfirmDeleteId(null);
+        }
+    };
+
     const statusLabel = (status) => {
         if (status === 'approved') return t('pages.statusApproved');
         if (status === 'rejected') return t('pages.statusRejected');
@@ -93,6 +117,14 @@ const RoleRequestPage = () => {
     }
 
     const currentRoleId = currentUser?.RoleId || currentUser?.RoleID || currentUser?.role_id;
+    // Tên vai trò hiện tại: ưu tiên role_name do /auth/me trả (nguồn: dbo.roles),
+    // sau đó tra trong danh sách roles của API, cuối cùng mới dùng map dự phòng.
+    const currentRoleName =
+        currentUser?.role_name ||
+        roles.find((r) => String(r.id) === String(currentRoleId))?.name ||
+        ROLE_NAMES[currentRoleId] ||
+        currentRoleId ||
+        '—';
 
     return (
         <div className="role-page">
@@ -112,7 +144,7 @@ const RoleRequestPage = () => {
             <form className="role-form" onSubmit={handleSubmit}>
                 <div className="role-field">
                     <label>{t('pages.currentRole')}</label>
-                    <div className="role-current">{ROLE_NAMES[currentRoleId] || currentRoleId || '—'}</div>
+                    <div className="role-current">{currentRoleName}</div>
                 </div>
 
                 <div className="role-field">
@@ -167,14 +199,52 @@ const RoleRequestPage = () => {
                                     <strong>{r.requested_role}</strong>
                                     <span>{r.created_at || ''}</span>
                                 </div>
-                                <span className={`role-request-status ${r.status}`}>
-                                    {r.status === 'pending'
-                                        ? <Clock size={14} />
-                                        : r.status === 'approved'
-                                            ? <CheckCircle2 size={14} />
-                                            : <Ban size={14} />}
-                                    {statusLabel(r.status)}
-                                </span>
+                                <div className="role-request-actions">
+                                    <span className={`role-request-status ${r.status}`}>
+                                        {r.status === 'pending'
+                                            ? <Clock size={14} />
+                                            : r.status === 'approved'
+                                                ? <CheckCircle2 size={14} />
+                                                : <Ban size={14} />}
+                                        {statusLabel(r.status)}
+                                    </span>
+
+                                    {/* Xóa yêu cầu — bấm 1: hiện xác nhận, bấm 2: xóa */}
+                                    {confirmDeleteId === r.request_id ? (
+                                        <span className="role-request-confirm">
+                                            <button
+                                                type="button"
+                                                className="role-request-delete confirm"
+                                                title={t('pages.deleteConfirm')}
+                                                onClick={() => handleDelete(r.request_id)}
+                                                disabled={removingId === r.request_id}
+                                            >
+                                                {removingId === r.request_id
+                                                    ? <Loader size={14} className="spin" />
+                                                    : <Trash2 size={14} />}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="role-request-cancel"
+                                                title={t('common.cancel')}
+                                                onClick={() => setConfirmDeleteId(null)}
+                                                disabled={removingId === r.request_id}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="role-request-delete"
+                                            title={t('pages.deleteRequest')}
+                                            onClick={() => setConfirmDeleteId(r.request_id)}
+                                            disabled={removingId !== null}
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    )}
+                                </div>
                             </li>
                         ))}
                     </ul>

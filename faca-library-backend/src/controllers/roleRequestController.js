@@ -220,4 +220,42 @@ const rejectRequest = async (req, res) => {
     }
 };
 
-module.exports = { getRoles, createRoleRequest, getMyRequests, getAllRequests, getPendingCount, approveRequest, rejectRequest };
+// 8. DELETE /api/role-requests/:id — XÓA yêu cầu cấp quyền của CHÍNH MÌNH (JWT)
+//    - Người dùng chỉ xóa được yêu cầu của mình (user_id = người trong token).
+//    - Admin (roleId = 1) xóa được yêu cầu của bất kỳ ai.
+//    - Xóa yêu cầu KHÔNG ảnh hưởng role hiện tại của user (dù request đang pending hay đã duyệt).
+const deleteMyRequest = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Không tìm thấy thông tin người dùng trong token.' });
+        }
+
+        const requestId = parseInt(req.params.id, 10);
+        if (!requestId) {
+            return res.status(400).json({ success: false, message: 'ID yêu cầu không hợp lệ.' });
+        }
+
+        const pool = await poolPromise;
+        const isAdmin = req.user?.roleId === 1 ? 1 : 0;
+
+        const upd = await pool.request()
+            .input('id', sql.Int, requestId)
+            .input('user_id', sql.Int, userId)
+            .input('is_admin', sql.Int, isAdmin)
+            .query(`
+                DELETE FROM dbo.role_requests
+                WHERE request_id = @id AND (@is_admin = 1 OR user_id = @user_id)
+            `);
+
+        if (upd.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu để xóa.' });
+        }
+        res.status(200).json({ success: true, message: 'Đã xóa yêu cầu.' });
+    } catch (error) {
+        console.error('Lỗi khi xóa yêu cầu vai trò:', error);
+        res.status(500).json({ success: false, message: 'Lỗi hệ thống khi xóa yêu cầu.', error: error.message });
+    }
+};
+
+module.exports = { getRoles, createRoleRequest, getMyRequests, getAllRequests, getPendingCount, approveRequest, rejectRequest, deleteMyRequest };

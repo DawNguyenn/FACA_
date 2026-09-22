@@ -886,3 +886,46 @@
     font-weight: 600;
     cursor: pointer;
 }
+
+/* ==========================================
+   Ô MẬT KHẨU — NÚT HIỆN / ẨN (con mắt)
+   ========================================== */
+/* Chừa chỗ bên phải để chữ không chạy xuống dưới nút con mắt.
+   Đặt ở cuối file để ghi đè padding của .auth-input (khai báo ở trên). */
+.auth-input-password {
+    padding-right: 44px;
+}
+
+.auth-password-toggle {
+    position: absolute;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-password-toggle:hover {
+    color: #c00000;
+    background-color: rgba(192, 0, 0, 0.06);
+}
+
+.auth-password-toggle:focus-visible {
+    outline: none;
+    color: #c00000;
+    box-shadow: 0 0 0 3px rgba(192, 0, 0, 0.15);
+}
+
+.auth-password-toggle:disabled {
+    color: #c4c4c4;
+    cursor: not-allowed;
+    background-color: transparent;
+}

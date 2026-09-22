@@ -166,21 +166,25 @@ exports.getMe = async (req, res) => {
         const pool = await poolPromise;
 
         // Query lại thông tin user từ SQL Server dựa trên UserId trong token
+        // JOIN dbo.roles để lấy tên vai trò (hiển thị ở trang cá nhân)
         const result = await pool.request()
             .input('user_id', sql.Int, userId)
             .query(`
-                SELECT user_id AS UserId,
-                       full_name AS full_name,
-                       COALESCE(NULLIF(full_name, ''), email) AS Username,
-                       email AS Email,
-                       role_id AS RoleId,
-                       department AS Department,
-                       department AS department,
-                       avatar_url AS avatar_url,
-                       ISNULL(language, 'vi') AS language,
-                       is_active
-                FROM dbo.users
-                WHERE user_id = @user_id
+                SELECT u.user_id AS UserId,
+                       u.full_name AS full_name,
+                       COALESCE(NULLIF(u.full_name, ''), u.email) AS Username,
+                       u.email AS Email,
+                       u.role_id AS RoleId,
+                       r.role_name AS role_name,
+                       r.description AS role_description,
+                       u.department AS Department,
+                       u.department AS department,
+                       u.avatar_url AS avatar_url,
+                       ISNULL(u.language, 'vi') AS language,
+                       u.is_active
+                FROM dbo.users u
+                LEFT JOIN dbo.roles r ON u.role_id = r.role_id
+                WHERE u.user_id = @user_id
             `);
 
         if (result.recordset.length === 0) {
@@ -211,7 +215,11 @@ exports.getMe = async (req, res) => {
                 full_name: user.full_name,
                 department: user.department,
                 avatar_url: user.avatar_url || '',
-                language: user.language || 'vi'
+                language: user.language || 'vi',
+                // Vai trò (lấy từ dbo.roles) để trang cá nhân hiển thị — chỉ xem, không sửa
+                role_id: user.RoleId,
+                role_name: user.role_name || '',
+                role_description: user.role_description || ''
             }
         });
 

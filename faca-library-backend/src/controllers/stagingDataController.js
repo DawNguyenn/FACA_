@@ -199,6 +199,60 @@ async function listAllSources(pool) {
     return [...merged.values()].sort((a, b) => String(a.label).localeCompare(String(b.label)));
 }
 
+// ---- Sắp xếp theo cột NGÀY -------------------------------------------------
+// Cột ngày trong các bảng staging lưu dạng chuỗi (nvarchar, do BULK INSERT từ Excel)
+// nên nếu ORDER BY so sánh CHUỖI sẽ sai thứ tự:
+//   - '10/5/2026' (tháng 10) bị xếp trước '2/1/2026' (tháng 2)
+//   - dòng rác ('Change date', 'Data-999') nhảy lên đầu khi sắp xếp giảm dần
+// Vì vậy phải quy đổi về kiểu `date` rồi mới so sánh.
+// Cột NGÀY: 'Change_Date', 'Received_Date', 'Output_date', 'Xuat_1_Date' (có _date / _Date)
+// hoặc dạng camelCase 'ChangeDate', 'ReceivedDate'. Cố ý KHÔNG khớp các từ thường
+// kết thúc bằng 'date' như 'Candidate'/'Update' -> tránh sắp xếp nhầm.
+const DATE_COL_RE = /(?:^|[_ ])date$|Date$/;
+
+/** Cột có phải cột ngày không */
+const isDateCol = (col) => DATE_COL_RE.test(String(col));
+
+/**
+ * Biểu thức SQL quy đổi 1 cột ngày dạng chuỗi về kiểu `date`.
+ * Thử lần lượt các định dạng thường gặp trong dữ liệu kho:
+ * ISO yyyy-mm-dd (style 23) -> Mỹ M/D/YYYY (101) -> Anh D/M/YYYY (103) -> theo ngôn ngữ server.
+ * Giá trị trống / không đọc được thành ngày -> NULL (không làm lỗi query).
+ */
+const sqlDateValue = (col) => {
+    const v = `NULLIF(LTRIM(RTRIM([${col}])), '')`;
+    return `COALESCE(TRY_CONVERT(date, ${v}, 23), TRY_CONVERT(date, ${v}, 101), TRY_CONVERT(date, ${v}, 103), TRY_CONVERT(date, ${v}))`;
+};
+
+/**
+ * Mệnh đề ORDER BY của 1 cột (tên cột đã qua whitelist).
+ * - Cột ngày: dòng trống/không phải ngày luôn xếp CUỐI; phần còn lại so sánh theo GIÁ TRỊ NGÀY
+ *   -> DESC = ngày mới nhất lên đầu đúng như mong đợi.
+ * - Cột khác: so sánh chuỗi như cũ.
+ */
+const orderTermsFor = (col, dir) => {
+    if (!isDateCol(col)) return `[${col}] ${dir}`;
+    const dv = sqlDateValue(col);
+    return `CASE WHEN ${dv} IS NULL THEN 1 ELSE 0 END, ${dv} ${dir}, [${col}] ${dir}`;
+};
+
+/**
+ * Chuẩn hoá mệnh đề ORDER BY mặc định của source (vd 'Change_Date DESC, Lot_ID, Model')
+ * để cột ngày cũng được so sánh theo giá trị ngày, đồng thời thêm StagingID làm
+ * tie-breaker giúp phân trang OFFSET/FETCH không bị trùng/thiếu dòng giữa các trang.
+ * Mệnh đề không nhận dạng được thì giữ nguyên (không đổi hành vi cũ).
+ */
+const buildOrderBy = (raw) => {
+    const rawText = String(raw || '').trim() || 'StagingID DESC';
+    const terms = rawText.split(',').map((term) => {
+        const m = term.trim().match(/^\[?([A-Za-z_][A-Za-z0-9_]*)\]?(?:\s+(ASC|DESC))?$/i);
+        if (!m) return term.trim();
+        return orderTermsFor(m[1], (m[2] || 'ASC').toUpperCase());
+    });
+    if (!/stagingid/i.test(rawText)) terms.push('[StagingID] DESC');
+    return terms.join(', ');
+};
+
 const listStaging = (sourceKey) => async (req, res) => {
     let source = null;
     try {
@@ -242,6 +296,20 @@ const listStaging = (sourceKey) => async (req, res) => {
         const safePage = Math.min(page, totalPages);
         const offset = (safePage - 1) * limit;
 
+        // Sắp xếp động theo cột người dùng click trên header bảng.
+        // Whitelist: chỉ chấp nhận tên cột nằm trong allColumns (hoặc StagingID) -> tránh SQL injection.
+        const sortableCols = ['StagingID', ...allColumns];
+        const rawSortBy = String(req.query.sortBy || '').trim();
+        const matchedSortCol = rawSortBy
+            ? sortableCols.find((c) => String(c).toLowerCase() === rawSortBy.toLowerCase())
+            : null;
+        const sortDir = String(req.query.sortDir || '').trim().toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+        // Cột ngày -> so sánh theo giá trị ngày nên DESC luôn cho "ngày mới nhất lên đầu".
+        // StagingID làm tie-breaker để phân trang ổn định khi nhiều dòng cùng giá trị.
+        const orderBy = matchedSortCol
+            ? `${orderTermsFor(matchedSortCol, sortDir)}, [StagingID] ${sortDir}`
+            : buildOrderBy(source.orderBy);
+
         // 2. Lấy đúng 1 trang dữ liệu từ Database (OFFSET/FETCH)
         const colList = ['[StagingID]', ...allColumns.map((c) => `[${c}]`)].join(', ');
         const dataResult = await pool.request()
@@ -252,7 +320,7 @@ const listStaging = (sourceKey) => async (req, res) => {
                 SELECT ${colList}
                 FROM ${source.table}
                 WHERE 1 = 1${searchFilter}
-                ORDER BY ${source.orderBy}
+                ORDER BY ${orderBy}
                 OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
             `);
 

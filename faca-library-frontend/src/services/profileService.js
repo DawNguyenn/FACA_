@@ -21,23 +21,23 @@ export const updateMyProfile = async (payload) => {
 };
 
 /**
- * POST /api/upload — Upload file ảnh (multipart/form-data), trả về URL ảnh
- * Backend nên trả về: { url: "https://..." } hoặc { data: { url } }
+ * POST /api/upload — Gán URL ảnh trực tiếp (không upload file)
+ * Backend chỉ validation URL và trả về
+ * Payload: { url: "https://..." }
  */
-export const uploadAvatar = async (file) => {
+export const uploadAvatar = async (url) => {
     const token = localStorage.getItem('token');
-    const formData = new FormData();
-    formData.append('file', file);
+    if (!token) throw new Error('Không tìm thấy token xác thực.');
 
-    const { data } = await axios.post(`${API_URL}/upload`, formData, {
+    const { data } = await axios.post(`${API_URL}/upload`, { url }, {
         headers: {
-            'Content-Type': 'multipart/form-data',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
         },
     });
-    const url = data.url || data?.data?.url || data.avatar_url || data?.data?.avatar_url;
-    if (!url) throw new Error('Server không trả về URL ảnh sau khi upload.');
-    return url;
+    const returnedUrl = data.url || data?.data?.url || data.avatar_url || data?.data?.avatar_url;
+    if (!returnedUrl) throw new Error('Server không trả về URL ảnh.');
+    return returnedUrl;
 };
 
 export default { getMyProfile, updateMyProfile, uploadAvatar };

@@ -7,11 +7,14 @@
 // ------------------------------------------------------------------
 //  PRESENTATION CONFIG — colour maps for badges & avatars
 // ------------------------------------------------------------------
+// Màu badge theo tên vai trò — khớp đúng role_name trong dbo.roles (FACA_DB).
+// DB lưu: 1=Admin, 2=Staff, 3=Engineer, 4=WareHouse, 5=QA, 6=User
 export const ROLE_COLORS = {
     Admin: { badge: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
+    Staff: { badge: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500' },
     Engineer: { badge: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
-    QC: { badge: 'bg-teal-100 text-teal-700', dot: 'bg-teal-500' },
-    Warehouse: { badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
+    WareHouse: { badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
+    QA: { badge: 'bg-teal-100 text-teal-700', dot: 'bg-teal-500' },
     User: { badge: 'bg-slate-100 text-slate-700', dot: 'bg-slate-500' },
 };
 
@@ -26,13 +29,15 @@ export const AVATAR_PALETTE = [
     'bg-violet-500', 'bg-amber-500', 'bg-cyan-600', 'bg-fuchsia-500',
 ];
 
-export const ROLE_OPTIONS = ['All', 'Admin', 'Engineer', 'QC', 'Warehouse', 'User'];
+// Tên vai trò để lọc (query ?role=...) và chọn khi tạo/sửa user.
+// Phải khớp role_name trong dbo.roles vì backend so khớp theo tên.
+export const ROLE_OPTIONS = ['All', 'Admin', 'Staff', 'Engineer', 'WareHouse', 'QA', 'User'];
 export const STATUS_OPTIONS = ['All', 'active', 'inactive', 'blocked'];
 export const DEPARTMENT_OPTIONS = ['IT', 'Manufacturing', 'Quality', 'Logistics', 'R&D', 'Sales', 'Support'];
 export const PAGE_SIZE = 8;
 
-// Map role_id to role name (matches backend database)
-export const ROLE_NAMES = { 1: 'Admin', 2: 'Engineer', 3: 'QC', 4: 'Warehouse', 5: 'User' };
+// Map role_id -> role_name (khớp dbo.roles trong FACA_DB)
+export const ROLE_NAMES = { 1: 'Admin', 2: 'Staff', 3: 'Engineer', 4: 'WareHouse', 5: 'QA', 6: 'User' };
 
 // ------------------------------------------------------------------
 //  Small pure helpers
@@ -58,8 +63,14 @@ export const formatDate = (iso) => {
 export const nextStatus = (status) => (status === 'blocked' ? 'active'
     : status === 'active' ? 'blocked' : 'active');
 
-// Fallback badge màu cho role không có trong ROLE_COLORS (do API trả về)
+// Fallback badge màu cho role không có trong ROLE_COLORS (do API trả về).
+// Tra không phân biệt hoa/thường vì DB lưu 'WareHouse' còn nơi khác có thể ghi 'warehouse'.
+const ROLE_COLORS_LC = Object.fromEntries(
+    Object.entries(ROLE_COLORS).map(([k, v]) => [k.toLowerCase(), v]),
+);
+
 export const roleColor = (role) => ROLE_COLORS[role]
+    || ROLE_COLORS_LC[String(role || '').toLowerCase()]
     || { badge: 'bg-slate-100 text-slate-700', dot: 'bg-slate-400' };
 
 // ------------------------------------------------------------------

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware');
 const { requireAdmin } = require('../middlewares/roleMiddleware');
-const { getRoles, createRoleRequest, getMyRequests, getAllRequests, getPendingCount, approveRequest, rejectRequest } = require('../controllers/roleRequestController');
+const { getRoles, createRoleRequest, getMyRequests, getAllRequests, getPendingCount, approveRequest, rejectRequest, deleteMyRequest } = require('../controllers/roleRequestController');
 
 // GET /api/role-requests/roles — danh sách vai trò để chọn
 router.get('/roles', authMiddleware, getRoles);
@@ -22,5 +22,8 @@ router.get('/pending-count', authMiddleware, getPendingCount);
 // ADMIN: duyệt / respinge yêu cau (cập nhăță role_id în Users)
 router.put('/:id/approve', authMiddleware, requireAdmin, approveRequest);
 router.put('/:id/reject', authMiddleware, requireAdmin, rejectRequest);
+
+// Người dùng: XÓA yêu cầu của chính mình (admin xóa được mọi yêu cầu)
+router.delete('/:id', authMiddleware, deleteMyRequest);
 
 module.exports = router;

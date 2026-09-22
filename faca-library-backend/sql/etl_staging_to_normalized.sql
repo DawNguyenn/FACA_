@@ -1,9 +1,3 @@
--- ================================================================
---  ETL: Staging_* (dữ liệu thô Excel) -> Bảng chuẩn hóa
---  Vendors / Projects / Builds / Materials / InventoryLots / InventoryTransactions
---  An toàn chạy lại (idempotent) nhờ NOT EXISTS.
---  Lọc bỏ: dòng rỗng hoàn toàn + dòng header Excel (Model = 'Model').
--- ================================================================
 SET XACT_ABORT ON;
 BEGIN TRAN;
 

@@ -1,12 +1,3 @@
-// ================================================================
-//  mailer.js — Cấu hình Nodemailer (Gmail SMTP) + các hàm gửi email
-//    - sendOtpEmail(to, otp)                  : gửi mã OTP khôi phục mật khẩu (hiệu lực 5 phút)
-//    - sendResetPasswordEmail(to, name, link) : gửi link đặt lại mật khẩu (hiệu lực 15 phút)
-//    - sendEmail({ to, subject, html })       : hàm gửi chung
-//
-//  Cấu hình đọc từ .env: SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / SMTP_FROM
-//  Nếu .env chưa điền (hoặc còn giá trị mẫu) thì dùng giá trị mặc định bên dưới.
-// ================================================================
 const nodemailer = require('nodemailer');
 
 // Giá trị mặc định dùng khi .env chưa cấu hình

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck, AlertCircle, Lock, ArrowLeft, LockKeyhole, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertCircle, ArrowLeft, LockKeyhole, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+import PasswordInput from '../../components/common/PasswordInput';
 import '../../styles/Auth.css';
 
 // Trang "Đặt lại mật khẩu" — nhận token & email từ query string trong link email:
@@ -117,30 +118,25 @@ const ResetPassword = () => {
 
                                 <form onSubmit={handleReset} className="auth-form" noValidate>
                                     <div className="auth-field-block">
-                                        <div className={`auth-input-group ${fieldErrors.password ? 'input-has-error' : ''}`}>
-                                            <Lock size={18} color={fieldErrors.password ? '#c00000' : '#777'} className="auth-input-icon" />
-                                            <input
-                                                type="password"
-                                                placeholder={t('auth.newPasswordPlaceholder')}
-                                                value={password}
-                                                onChange={handleInputChange(setPassword, 'password')}
-                                                className="auth-input"
-                                            />
-                                        </div>
+                                        {/* Ô mật khẩu mới có nút hiện/ẩn (con mắt) */}
+                                        <PasswordInput
+                                            value={password}
+                                            onChange={handleInputChange(setPassword, 'password')}
+                                            placeholder={t('auth.newPasswordPlaceholder')}
+                                            hasError={!!fieldErrors.password}
+                                            autoComplete="new-password"
+                                        />
                                         {fieldErrors.password && <span className="custom-field-error">{fieldErrors.password}</span>}
                                     </div>
 
                                     <div className="auth-field-block">
-                                        <div className={`auth-input-group ${fieldErrors.confirmPassword ? 'input-has-error' : ''}`}>
-                                            <Lock size={18} color={fieldErrors.confirmPassword ? '#c00000' : '#777'} className="auth-input-icon" />
-                                            <input
-                                                type="password"
-                                                placeholder={t('auth.confirmPasswordPlaceholder')}
-                                                value={confirmPassword}
-                                                onChange={handleInputChange(setConfirmPassword, 'confirmPassword')}
-                                                className="auth-input"
-                                            />
-                                        </div>
+                                        <PasswordInput
+                                            value={confirmPassword}
+                                            onChange={handleInputChange(setConfirmPassword, 'confirmPassword')}
+                                            placeholder={t('auth.confirmPasswordPlaceholder')}
+                                            hasError={!!fieldErrors.confirmPassword}
+                                            autoComplete="new-password"
+                                        />
                                         {fieldErrors.confirmPassword && <span className="custom-field-error">{fieldErrors.confirmPassword}</span>}
                                     </div>
 
