@@ -8,6 +8,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminRoleRequests from './pages/admin/AdminRoleRequestsPage';
 import ProfilePage from './pages/Profile';
 import IssuesPage from './pages/IssuesPage';
+import ErrorReportsPage from './pages/ErrorReportsPage';
 import RoleRequestPage from './pages/RoleRequestPage';
 import WarehouseExcelViewer from './pages/WarehouseExcelViewer';
 import InventoryLotsPage from './pages/InventoryLotsPage';
@@ -131,6 +132,18 @@ function App() {
                         <ProtectedRoute>
                             <MainLayout>
                                 <IssuesPage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Quản lý Lỗi: thư viện báo cáo PowerPoint quét từ OneDrive (?category=LOI_DIEN|LOI_QUANG|LOI_CO) */}
+                <Route
+                    path="/issues/reports"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <ErrorReportsPage />
                             </MainLayout>
                         </ProtectedRoute>
                     }

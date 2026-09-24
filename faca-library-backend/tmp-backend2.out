@@ -1,0 +1,4 @@
+◇ injected env (13) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+🚀 Server FACA Library Backend đang chạy tại: http://localhost:5000
+✅ Đã kết nối thành công tới SQL Server database: FACA_DB

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { ShieldCheck, CheckCircle2, X, Loader, AlertCircle } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, X, Loader, AlertCircle, Trash2, EyeOff } from 'lucide-react';
 import '../../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -13,6 +13,11 @@ const AdminRoleRequestsPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState('pending');
+    // Thông báo thành công (vd: đã xóa vĩnh viễn yêu cầu)
+    const [notice, setNotice] = useState(null);
+    // Xóa vĩnh viễn: id đang chờ xác nhận (bấm 2 bước tránh bấm nhầm) + id đang xóa
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+    const [removingId, setRemovingId] = useState(null);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -40,6 +45,30 @@ const AdminRoleRequestsPage = () => {
         }
     };
 
+    // ADMIN: xóa VĨNH VIỄN yêu cầu (DELETE /api/role-requests/:id)
+    // NGƯỜI DÙNG THƯỜNG xóa chỉ ẩn khỏi danh sách của họ (hidden_by_user = 1) nên
+    // yêu cầu vẫn hiện ở trang này; chỉ khi quản trị viên xóa thì bản ghi mới mất hẳn.
+    const handleDelete = async (id) => {
+        setNotice(null);
+        setError(null);
+        setRemovingId(id);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.delete(`${API_URL}/role-requests/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setRequests((prev) => prev.filter((r) => r.request_id !== id));
+            setNotice(res.data?.message || t('pages.adminDeleteOk'));
+            // Cập nhật badge "yêu cầu chờ duyệt" trên Header
+            window.dispatchEvent(new Event('user:updated'));
+        } catch (err) {
+            setError(err.response?.data?.message || t('pages.loadFail'));
+        } finally {
+            setRemovingId(null);
+            setConfirmDeleteId(null);
+        }
+    };
+
     const statusLabel = (s) => {
         if (s === 'approved') return t('pages.statusApproved');
         if (s === 'rejected') return t('pages.statusRejected');
@@ -54,6 +83,7 @@ const AdminRoleRequestsPage = () => {
             </h1>
 
             {error && <div className="role-alert err">{error}</div>}
+            {notice && <div className="role-alert ok">{notice}</div>}
 
             {/* Bộ lọc trạng thái */}
             <div className="issues-filters">
@@ -94,23 +124,73 @@ const AdminRoleRequestsPage = () => {
                                 </div>
                             </div>
                             <div className="admin-rr-meta">
-                                <span className="role-request-status ${r.status} status-${r.status}">
+                                <span className={`role-request-status ${r.status}`}>
                                     {statusLabel(r.status)}
                                 </span>
-                                <span className="admin-rr-date">{r.created_at || ''}</span>
-                            </div>
-                            {r.status === 'pending' && (
-                                <div className="admin-rr-actions">
-                                    <button className="admin-rr-approve" onClick={() => handleDecision(r.request_id, 'approve')}>
-                                        <CheckCircle2 size={15} />
-                                        <span>{t('pages.statusApproved')}</span>
-                                    </button>
-                                    <button className="admin-rr-reject" onClick={() => handleDecision(r.request_id, 'reject')}>
-                                        <X size={15} />
-                                        <span>{t('pages.statusRejected')}</span>
-                                    </button>
+                                <div className="admin-rr-meta-right">
+                                    {/* Người dùng đã xóa yêu cầu khỏi danh sách của họ (chỉ ẩn phía họ) */}
+                                    {Number(r.hidden_by_user) === 1 && (
+                                        <span className="admin-rr-hidden">
+                                            <EyeOff size={13} />
+                                            <span>{t('pages.hiddenByUser')}</span>
+                                        </span>
+                                    )}
+                                    <span className="admin-rr-date">{r.created_at || ''}</span>
                                 </div>
-                            )}
+                            </div>
+
+                            <div className="admin-rr-actions">
+                                {r.status === 'pending' && (
+                                    <>
+                                        <button className="admin-rr-approve" onClick={() => handleDecision(r.request_id, 'approve')}>
+                                            <CheckCircle2 size={15} />
+                                            <span>{t('pages.statusApproved')}</span>
+                                        </button>
+                                        <button className="admin-rr-reject" onClick={() => handleDecision(r.request_id, 'reject')}>
+                                            <X size={15} />
+                                            <span>{t('pages.statusRejected')}</span>
+                                        </button>
+                                    </>
+                                )}
+
+                                {/* Xóa VĨNH VIỄN — bấm 1: hiện xác nhận, bấm 2: xóa thật */}
+                                {confirmDeleteId === r.request_id ? (
+                                    <span className="role-request-confirm">
+                                        <button
+                                            type="button"
+                                            className="admin-rr-delete confirm"
+                                            title={t('pages.adminDeleteConfirm')}
+                                            onClick={() => handleDelete(r.request_id)}
+                                            disabled={removingId === r.request_id}
+                                        >
+                                            {removingId === r.request_id
+                                                ? <Loader size={14} className="spin" />
+                                                : <Trash2 size={14} />}
+                                            <span>{t('pages.adminDeleteConfirm')}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="role-request-cancel"
+                                            title={t('common.cancel')}
+                                            onClick={() => setConfirmDeleteId(null)}
+                                            disabled={removingId === r.request_id}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="admin-rr-delete"
+                                        title={t('pages.adminDeleteRequest')}
+                                        onClick={() => setConfirmDeleteId(r.request_id)}
+                                        disabled={removingId !== null}
+                                    >
+                                        <Trash2 size={15} />
+                                        <span>{t('pages.adminDeleteRequest')}</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>

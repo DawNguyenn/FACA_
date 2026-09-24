@@ -22,7 +22,9 @@ const languageLabel = (code) => {
     return lang ? `${lang.flag} ${lang.label}` : code;
 };
 
-// Kiểm tra URL hợp lệ
+// Tên vai trò dự phòng khi API/cache không trả về role_name.
+// Khớp bảng dbo.roles trong FACA_DB: 1=Admin, 2=Staff, 3=Engineer, 4=WareHouse, 5=QA, 6=User
+// Kiểm tra URL hợp lệ (dùng cho preview ảnh khi nhập URL)
 const isValidUrl = (str) => {
     try {
         new URL(str);
@@ -31,9 +33,6 @@ const isValidUrl = (str) => {
         return false;
     }
 };
-
-// Tên vai trò dự phòng khi API/cache không trả về role_name.
-// Khớp bảng dbo.roles trong FACA_DB: 1=Admin, 2=Staff, 3=Engineer, 4=WareHouse, 5=QA, 6=User
 const FALLBACK_ROLE_NAMES = {
     1: 'Admin',
     2: 'Staff',
@@ -306,16 +305,6 @@ const ProfilePage = () => {
                                     {languageLabel(formData.language)}
                                 </p>
                             </div>
-                            {formData.avatar_url && isValidUrl(formData.avatar_url) && (
-                                <div className="profile-view-row">
-                                    <span className="profile-view-label">{t('profile.avatarUrl') || 'URL ảnh'}</span>
-                                    <p className="profile-view-value profile-url-value">
-                                        <a href={formData.avatar_url} target="_blank" rel="noopener noreferrer">
-                                            {formData.avatar_url}
-                                        </a>
-                                    </p>
-                                </div>
-                            )}
                         </div>
                         <div className="profile-actions profile-actions-center">
                             <button type="button" className="profile-edit-btn" onClick={handleEdit}>

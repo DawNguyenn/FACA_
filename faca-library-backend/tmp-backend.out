@@ -1,0 +1,5 @@
+◇ injected env (12) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+🚀 Server FACA Library Backend đang chạy tại: http://localhost:5000
+✅ Đã kết nối thành công tới SQL Server database: FACA_DB
+📊 Quét PowerPoint xong: 1 folder, 26 file (+0 mới, ~26 cập nhật, -0 đã dọn) trong 188ms

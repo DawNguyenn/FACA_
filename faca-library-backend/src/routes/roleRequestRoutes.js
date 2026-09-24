@@ -23,7 +23,8 @@ router.get('/pending-count', authMiddleware, getPendingCount);
 router.put('/:id/approve', authMiddleware, requireAdmin, approveRequest);
 router.put('/:id/reject', authMiddleware, requireAdmin, rejectRequest);
 
-// Người dùng: XÓA yêu cầu của chính mình (admin xóa được mọi yêu cầu)
+// Người dùng: xóa yêu cầu của chính mình (chỉ ẩn khỏi danh sách của họ)
+// Admin: xóa vĩnh viễn yêu cầu của bất kỳ ai (xem deleteMyRequest)
 router.delete('/:id', authMiddleware, deleteMyRequest);
 
 module.exports = router;

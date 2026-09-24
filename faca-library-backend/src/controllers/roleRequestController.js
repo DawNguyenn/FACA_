@@ -38,12 +38,15 @@ const createRoleRequest = async (req, res) => {
         }
 
         // Không gửi trùng yêu cầu đang chờ duyệt cho cùng vai trò
+        // (bỏ qua các yêu cầu người dùng đã tự xóa khỏi danh sách của họ → hidden_by_user = 1,
+        //  để họ vẫn gửi lại được yêu cầu mới cho cùng vai trò)
         const dupe = await pool.request()
             .input('user_id', sql.Int, userId)
             .input('role_id', sql.Int, roleId)
             .query(`
                 SELECT request_id FROM dbo.role_requests
                 WHERE user_id = @user_id AND requested_role_id = @role_id AND status = 'pending'
+                  AND ISNULL(hidden_by_user, 0) = 0
             `);
         if (dupe.recordset.length > 0) {
             return res.status(400).json({ success: false, message: 'Bạn đã có yêu cầu đang chờ duyệt cho vai trò này.' });
@@ -66,6 +69,9 @@ const createRoleRequest = async (req, res) => {
 };
 
 // 3. GET /api/role-requests/me — các yêu cầu của chính người dùng (JWT)
+//    Chỉ trả về những yêu cầu người dùng CHƯA xóa khỏi danh sách của mình
+//    (hidden_by_user = 0). Yêu cầu đã bị ẩn vẫn còn nguyên trong DB và
+//    vẫn hiển thị đầy đủ cho quản trị viên ở GET /api/role-requests/all.
 const getMyRequests = async (req, res) => {
     try {
         const userId = req.user?.userId;
@@ -86,6 +92,7 @@ const getMyRequests = async (req, res) => {
                 FROM dbo.role_requests rr
                 INNER JOIN dbo.roles r ON rr.requested_role_id = r.role_id
                 WHERE rr.user_id = @user_id
+                  AND ISNULL(rr.hidden_by_user, 0) = 0
                 ORDER BY rr.created_at DESC
             `);
 
@@ -97,6 +104,9 @@ const getMyRequests = async (req, res) => {
 };
 
 // 4. GET /api/role-requests/all — ADMIN: danh sách toàn bộ yêu cầu (filtre status)
+//    QUAN TRỌNG: KHÔNG lọc hidden_by_user → yêu cầu người dùng tự xóa khỏi
+//    danh sách của họ vẫn hiển thị đầy đủ ở đây (kèm cờ hidden_by_user để UI
+//    gắn nhãn "Người dùng đã ẩn"). Chỉ khi Admin xóa thì bản ghi mới mất hẳn.
 const getAllRequests = async (req, res) => {
     try {
         const { status } = req.query;
@@ -112,6 +122,7 @@ const getAllRequests = async (req, res) => {
                    r.role_name                  AS requested_role,
                    rr.reason,
                    rr.status,
+                   ISNULL(rr.hidden_by_user, 0) AS hidden_by_user,
                    CONVERT(varchar(19), rr.created_at, 120) AS created_at
             FROM dbo.role_requests rr
             INNER JOIN dbo.users u ON rr.user_id = u.user_id
@@ -220,10 +231,12 @@ const rejectRequest = async (req, res) => {
     }
 };
 
-// 8. DELETE /api/role-requests/:id — XÓA yêu cầu cấp quyền của CHÍNH MÌNH (JWT)
-//    - Người dùng chỉ xóa được yêu cầu của mình (user_id = người trong token).
-//    - Admin (roleId = 1) xóa được yêu cầu của bất kỳ ai.
-//    - Xóa yêu cầu KHÔNG ảnh hưởng role hiện tại của user (dù request đang pending hay đã duyệt).
+// 8. DELETE /api/role-requests/:id — XÓA yêu cầu cấp quyền
+//    - NGƯỜI DÙNG (roleId != 1): chỉ XÓA MỀM (hidden_by_user = 1) yêu cầu của chính mình.
+//      → Yêu cầu biến mất khỏi "Yêu cầu của tôi" nhưng vẫn hiển thị đầy đủ
+//        cho quản trị viên ở /api/role-requests/all cho tới khi Admin xóa thật.
+//    - ADMIN (roleId = 1): XÓA CỨNG bản ghi khỏi dbo.role_requests.
+//    - Việc xóa/ẩn KHÔNG ảnh hưởng role hiện tại của user (dù request pending hay đã duyệt).
 const deleteMyRequest = async (req, res) => {
     try {
         const userId = req.user?.userId;
@@ -237,21 +250,44 @@ const deleteMyRequest = async (req, res) => {
         }
 
         const pool = await poolPromise;
-        const isAdmin = req.user?.roleId === 1 ? 1 : 0;
+        const isAdmin = Number(req.user?.roleId) === 1;
 
+        // 1) Quản trị viên: xóa vĩnh viễn (bản ghi mất khỏi cả trang Admin)
+        if (isAdmin) {
+            const del = await pool.request()
+                .input('id', sql.Int, requestId)
+                .query(`DELETE FROM dbo.role_requests WHERE request_id = @id`);
+
+            if (del.rowsAffected[0] === 0) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu để xóa.' });
+            }
+            return res.status(200).json({
+                success: true,
+                permanent: true,
+                message: 'Đã xóa vĩnh viễn yêu cầu.',
+            });
+        }
+
+        // 2) Người dùng thường: chỉ ẩn khỏi danh sách của chính họ
         const upd = await pool.request()
             .input('id', sql.Int, requestId)
             .input('user_id', sql.Int, userId)
-            .input('is_admin', sql.Int, isAdmin)
             .query(`
-                DELETE FROM dbo.role_requests
-                WHERE request_id = @id AND (@is_admin = 1 OR user_id = @user_id)
+                UPDATE dbo.role_requests
+                SET hidden_by_user = 1
+                WHERE request_id = @id
+                  AND user_id = @user_id
+                  AND ISNULL(hidden_by_user, 0) = 0
             `);
 
         if (upd.rowsAffected[0] === 0) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu để xóa.' });
         }
-        res.status(200).json({ success: true, message: 'Đã xóa yêu cầu.' });
+        return res.status(200).json({
+            success: true,
+            permanent: false,
+            message: 'Đã xóa khỏi danh sách của bạn (quản trị viên vẫn xem được yêu cầu này).',
+        });
     } catch (error) {
         console.error('Lỗi khi xóa yêu cầu vai trò:', error);
         res.status(500).json({ success: false, message: 'Lỗi hệ thống khi xóa yêu cầu.', error: error.message });

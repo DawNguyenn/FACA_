@@ -1,47 +1,82 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { FileText, AlertCircle, Package, BookOpen, Boxes, ArrowRight } from 'lucide-react';
 import '../styles/Home.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const formatNumber = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+
 const Home = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [statsLoading, setStatsLoading] = useState(true);
 
     useEffect(() => {
-        // Kiểm tra phiên đăng nhập
+        // Kiem tra phien dang nhap
         const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
 
         if (!token || !storedUser) {
-            // Nếu chưa đăng nhập, đá về trang Login
+            // Neu chua dang nhap, da ve trang Login
             navigate('/login');
         } else {
             setUser(JSON.parse(storedUser));
         }
     }, [navigate]);
 
+    // So lieu that cho Trang chu: GET /api/dashboard/stats
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const controller = new AbortController();
+        const loadStats = async () => {
+            setStatsLoading(true);
+            try {
+                const res = await axios.get(`${API_URL}/dashboard/stats`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal,
+                });
+                setStats(res.data?.data || null);
+            } catch (err) {
+                if (!axios.isCancel(err)) {
+                    console.error('Khong the tai thong ke dashboard:', err);
+                    setStats(null);
+                }
+            } finally {
+                setStatsLoading(false);
+            }
+        };
+        loadStats();
+        return () => controller.abort();
+    }, []);
+
     if (!user) return null;
 
-    // Thống kê nhanh (KPI Stats Bar)
-    const stats = [
-        { icon: FileText, value: '1,248', label: 'Báo cáo FACA', color: '#60a5fa' },
-        { icon: AlertCircle, value: '14', label: 'Sự cố chờ xử lý', color: '#f87171' },
-        { icon: Package, value: '3,520', label: 'Linh kiện tồn kho', color: '#34d399' },
+    // Thong ke nhanh (KPI Stats Bar) — DU LIEU THAT tu backend
+    const kpis = [
+        { icon: FileText, value: statsLoading ? '...' : formatNumber(stats?.facaReports), label: t('home.kpiReports'), color: '#60a5fa', to: '/issues/reports' },
+        { icon: AlertCircle, value: statsLoading ? '...' : formatNumber(stats?.pendingIssues), label: t('home.kpiPending'), color: '#f87171', to: '/issues' },
+        { icon: Package, value: statsLoading ? '...' : formatNumber(stats?.inventoryLots), label: t('home.kpiInventory'), color: '#34d399', to: '/warehouse' },
     ];
 
-    // Lối tắt tính năng chính
+    // Loi tat tinh nang chinh
     const features = [
         {
-            to: '/issues',
+            to: '/issues/reports',
             icon: BookOpen,
-            title: 'Thư viện FACA',
-            desc: 'Tra cứu và học hỏi từ các báo cáo phân tích Failure Analysis & Corrective Action (8D / 5-Why) của Camera Module Division.'
+            title: t('home.featureReportsTitle'),
+            desc: t('home.featureReportsDesc')
         },
         {
-            to: '/inventory',
+            to: '/warehouse',
             icon: Boxes,
-            title: 'Kho linh kiện',
-            desc: 'Quản lý, theo dõi tồn kho và kiểm soát nguồn linh kiện theo thời gian thực trên toàn phân xưởng.'
+            title: t('home.featureInventoryTitle'),
+            desc: t('home.featureInventoryDesc')
         }
     ];
 
@@ -52,27 +87,25 @@ const Home = () => {
                 <span className="home-hero-badge">Camera Module PE Division</span>
                 <h1 className="home-hero-title">FACA & Component Library</h1>
                 <p className="home-hero-desc">
-                    Hệ thống tra cứu Failure Analysis & Corrective Action và
-                    kho linh kiện nội bộ - hỗ trợ phân tích, chia sẻ bài học kinh nghiệm
-                    và quản lý nguồn vật tư hiệu quả cho toàn Division.
+                    {t('home.heroDesc')}
                 </p>
 
                 <div className="home-stats">
-                    {stats.map((stat) => (
-                        <div className="home-stat-item" key={stat.label}>
+                    {kpis.map((stat) => (
+                        <Link to={stat.to} className="home-stat-item" key={stat.label} style={{ textDecoration: 'none' }}>
                             <stat.icon size={28} color={stat.color} />
                             <div>
                                 <span className="home-stat-value">{stat.value}</span>
                                 <span className="home-stat-label">{stat.label}</span>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </section>
 
             {/* ====== Main Features Grid ====== */}
             <section className="home-features">
-                <h2 className="home-section-title">Tính năng chính</h2>
+                <h2 className="home-section-title">{t('home.mainFeatures')}</h2>
                 <div className="home-features-grid">
                     {features.map((feature) => (
                         <Link to={feature.to} className="home-feature-card" key={feature.to}>
@@ -82,7 +115,7 @@ const Home = () => {
                             <h3 className="home-feature-title">{feature.title}</h3>
                             <p className="home-feature-desc">{feature.desc}</p>
                             <span className="home-feature-link">
-                                Truy cập ngay <ArrowRight size={16} />
+                                {t('home.accessNow')} <ArrowRight size={16} />
                             </span>
                         </Link>
                     ))}

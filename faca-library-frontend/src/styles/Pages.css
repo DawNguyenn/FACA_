@@ -151,6 +151,172 @@
 }
 
 /* ================================================================
+   ErrorReportsPage — Thư viện báo cáo lỗi PowerPoint (EE / OE / ME)
+   ================================================================ */
+.reports-subtitle {
+    margin: -12px 0 18px;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.reports-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.reports-toolbar .issues-filters {
+    margin-bottom: 0;
+}
+
+.reports-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reports-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    color: #9ca3af;
+    transition: border-color 0.2s ease;
+}
+
+.reports-search:focus-within {
+    border-color: #c00000;
+}
+
+.reports-search input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.8rem;
+    color: #374151;
+    width: 220px;
+}
+
+.reports-sync-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background-color: #c00000;
+    border: 1px solid #c00000;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reports-sync-btn:hover:not(:disabled) {
+    background-color: #a00000;
+}
+
+.reports-sync-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.reports-notice {
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.reports-notice.ok { background-color: #d1fae5; color: #047857; }
+.reports-notice.error { background-color: #fee2e2; color: #b91c1c; }
+
+.reports-count {
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+
+.report-card {
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.report-card:hover,
+.report-card:focus-visible {
+    border-color: #c00000;
+    box-shadow: 0 8px 20px rgba(192, 0, 0, 0.12);
+    transform: translateY(-2px);
+    outline: none;
+}
+
+.report-card .issue-card-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.report-card-icon {
+    color: #c00000;
+    flex-shrink: 0;
+}
+
+.report-open-hint {
+    color: #c00000;
+    font-weight: 600;
+}
+
+.report-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Nút mở file bằng ứng dụng PowerPoint Desktop (protocol handler ms-powerpoint:) */
+.report-app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #374151;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.report-app-btn:hover {
+    border-color: #c00000;
+    background-color: #fef2f2;
+    color: #c00000;
+}
+
+@media (max-width: 640px) {
+    .reports-actions {
+        width: 100%;
+    }
+
+    .reports-search {
+        flex: 1;
+    }
+
+    .reports-search input {
+        width: 100%;
+    }
+}
+
+/* ================================================================
    RoleRequestPage — Xin cấp quyền / Đổi vai trò
    ================================================================ */
 .role-page {
@@ -467,3 +633,64 @@
 }
 
 .admin-rr-reject:hover { background-color: #b91c1c; }
+
+/* Phần phải của meta: nhãn "Người dùng đã ẩn" + ngày gửi */
+.admin-rr-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Nhãn cho yêu cầu mà người dùng đã xóa khỏi danh sách của họ
+   (chỉ ẩn phía người dùng — Admin vẫn thấy đầy đủ ở đây) */
+.admin-rr-hidden {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Nhóm nút: Duyệt/Từ chối + Xóa vĩnh viễn (nút xóa đẩy sang phải) */
+.admin-rr-actions { flex-wrap: wrap; }
+
+.admin-rr-actions .role-request-confirm { margin-left: auto; }
+
+.admin-rr-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 8px 14px;
+    background-color: #ffffff;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.admin-rr-delete:hover { background-color: #fef2f2; border-color: #fca5a5; }
+.admin-rr-delete:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.admin-rr-delete.confirm {
+    background-color: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+}
+
+.admin-rr-delete.confirm:hover { background-color: #b91c1c; border-color: #b91c1c; }
+
+/* Ghi chú nhỏ dưới danh sách yêu cầu của người dùng */
+.role-requests-note {
+    margin: 10px 0 0;
+    font-size: 0.72rem;
+    font-style: italic;
+    color: #9ca3af;
+}

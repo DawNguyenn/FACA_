@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User, Menu, X, ShieldCheck, Search, Loader, ChevronDown, Zap, Eye, Wrench, KeyRound, FileSpreadsheet, Boxes } from 'lucide-react';
+import {
+    Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User,
+    Menu, X, ShieldCheck, Search, Loader, ChevronDown,
+    KeyRound, FileSpreadsheet, Boxes
+} from 'lucide-react';
 import axios from 'axios';
 import '../../styles/Header.css';
 
@@ -47,7 +51,7 @@ const Header = () => {
                 if (cachedUser) {
                     try {
                         setUser(JSON.parse(cachedUser));
-                    } catch (parseErr) {
+                    } catch {
                         setUser(null);
                     }
                 } else {
@@ -66,7 +70,7 @@ const Header = () => {
         return () => window.removeEventListener('user:updated', handleUserUpdated);
     }, [API_URL]);
 
-    // Quản trị:  Đếm số lượng yêu cầu cấp quyền đang chờ duyệt (pending) để hiển thị badge trên menu Admin
+    // Quản trị: Đếm số lượng yêu cầu cấp quyền đang chờ duyệt (pending)
     useEffect(() => {
         const loadPendingCount = async () => {
             const token = localStorage.getItem('token');
@@ -86,7 +90,7 @@ const Header = () => {
         return () => window.removeEventListener('user:updated', onUserUpdated);
     }, [API_URL]);
 
-    // Kiểm tra quyền Admin (hỗ trợ mọi kiểu đặt tên cột RoleId từ SQL Server)
+    // Kiểm tra quyền Admin
     const isAdmin =
         user &&
         (user.RoleId === 1 ||
@@ -111,15 +115,8 @@ const Header = () => {
         }
     };
 
-    const isActive = (path) => location.pathname === path;
-
     // Danh mục con menu sổ xuống
     const dropdownItems = {
-        issues: [
-            { label: t('header.catElectrical'), to: '/issues?category_id=1', icon: Zap },
-            { label: t('header.catOptical'), to: '/issues?category_id=2', icon: Eye },
-            { label: t('header.catMechanical'), to: '/issues?category_id=3', icon: Wrench },
-        ],
         warehouse: [
             { label: t('header.warehouseExcel'), to: '/warehouse', icon: FileSpreadsheet },
             { label: t('header.warehouseLots'), to: '/warehouse/inventory-lots', icon: Boxes },
@@ -165,7 +162,7 @@ const Header = () => {
 
                 {/* Navigation Links */}
                 <nav className={`header-nav ${isMenuOpen ? 'nav-open' : ''}`}>
-                    {/* Trang chủ (link trực tiếp) */}
+                    {/* Trang chủ */}
                     <div className={`nav-item ${location.pathname === '/' ? 'active' : ''}`} onClick={closeDropdowns}>
                         <LayoutDashboard size={18} />
                         <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>
@@ -173,28 +170,15 @@ const Header = () => {
                         </Link>
                     </div>
 
-                    {/* Quản lý Lỗi + dropdown (Lỗi điện / quang / cơ) */}
-                    <div
-                        className="nav-item nav-dropdown"
-                        onClick={() => toggleDropdown('issues')}
-                        aria-expanded={openDropdown === 'issues'}
-                    >
+                    {/* Quan ly Loi - di thang toi Bao cao FACA */}
+                    <div className={`nav-item ${location.pathname.startsWith('/issues') ? 'active' : ''}`} onClick={closeDropdowns}>
                         <FileText size={18} />
-                        <span>{t('header.issues')}</span>
-                        <ChevronDown size={14} className="nav-chevron" />
-                        {openDropdown === 'issues' && (
-                            <div className="nav-dropdown-menu" onClick={closeDropdowns}>
-                                {dropdownItems.issues.map((item) => (
-                                    <Link key={item.to} to={item.to} className="nav-dropdown-item" onClick={closeDropdowns}>
-                                        <item.icon size={16} />
-                                        <span className="nav-dropdown-label">{item.label}</span>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
+                        <Link to="/issues/reports" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <span>{t('header.issues')}</span>
+                        </Link>
                     </div>
 
-                    {/* Kho & Vật tư + dropdown (Kho dữ liệu Excel / Inventory Lots) */}
+                    {/* Kho NPI & Vat tu */}
                     <div
                         className={`nav-item nav-dropdown ${location.pathname.startsWith('/warehouse') ? 'active' : ''}`}
                         onClick={() => toggleDropdown('warehouse')}
@@ -215,10 +199,10 @@ const Header = () => {
                         )}
                     </div>
 
-                    {/* Chỉ hiển thị Admin khi người dùng có quyền admin */}
+                    {/* Menu Admin */}
                     {isAdmin && (
                         <div
-                            className="nav-item nav-dropdown"
+                            className={`nav-item nav-dropdown ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
                             onClick={() => toggleDropdown('admin')}
                             aria-expanded={openDropdown === 'admin'}
                         >
@@ -255,7 +239,6 @@ const Header = () => {
                 {/* User Profile Area */}
                 <div className="header-user-area">
                     {loading ? (
-                        /* Đang tải dữ liệu người dùng */
                         <div className="user-profile-dropdown header-loading">
                             <div className="avatar-circle">
                                 <Loader size={18} color="#c00000" className="loading-spinner" />
@@ -315,7 +298,6 @@ const Header = () => {
                             )}
                         </>
                     ) : (
-                        /* Chưa đăng nhập */
                         <Link to="/login" className="signin-link">
                             <LogIn size={16} />
                             <span>{t('common.signIn')}</span>

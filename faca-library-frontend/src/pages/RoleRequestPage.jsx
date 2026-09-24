@@ -80,17 +80,23 @@ const RoleRequestPage = () => {
         }
     };
 
-    // XÓA 1 yêu cầu của tôi (DELETE /api/role-requests/:id)
+    // XÓA yêu cầu trong "Yêu cầu của tôi" — người dùng thường chỉ XÓA MỀM:
+    // backend (DELETE /api/role-requests/:id) chỉ set hidden_by_user = 1 nên yêu cầu
+    // mất ở góc nhìn của người dùng, còn quản trị viên vẫn thấy đầy đủ ở trang Admin
+    // cho tới khi chính Admin xóa vĩnh viễn.
     const handleDelete = async (id) => {
         setMessage(null);
         setRemovingId(id);
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_URL}/role-requests/${id}`, {
+            const res = await axios.delete(`${API_URL}/role-requests/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setMyRequests((list) => list.filter((r) => r.request_id !== id));
-            setMessage({ type: 'success', text: t('pages.deleteRequestOk') });
+            setMessage({ type: 'success', text: res.data?.message || t('pages.deleteRequestOk') });
+            // Đồng bộ lại Header (badge chờ duyệt) — không đổi với user thường,
+            // nhưng đúng khi người thao tác là Admin (khi đó yêu cầu bị xóa thật).
+            window.dispatchEvent(new Event('user:updated'));
         } catch (err) {
             setMessage({ type: 'error', text: err.response?.data?.message || err.message });
         } finally {
@@ -248,6 +254,10 @@ const RoleRequestPage = () => {
                             </li>
                         ))}
                     </ul>
+                )}
+
+                {myRequests.length > 0 && (
+                    <p className="role-requests-note">{t('pages.deleteRequestNote')}</p>
                 )}
             </section>
         </div>

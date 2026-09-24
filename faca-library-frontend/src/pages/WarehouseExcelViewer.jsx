@@ -39,13 +39,13 @@ export default function WarehouseExcelViewer() {
     }, []);
 
     // ===== Inline Editing / Thêm dòng / Thêm cột =====
-    const [editingId, setEditingId] = useState(null);         // StagingID đang sửa
-    const [editValues, setEditValues] = useState({});         // giá trị đang chỉnh
-    const [savingRow, setSavingRow] = useState(false);        // đang lưu
-    const [actionMsg, setActionMsg] = useState(null);         // thông báo thành công/lỗi
-    const [showAddRow, setShowAddRow] = useState(false);      // form thêm dòng mới
+    const [editingId, setEditingId] = useState(null);         
+    const [editValues, setEditValues] = useState({});        
+    const [savingRow, setSavingRow] = useState(false);        
+    const [actionMsg, setActionMsg] = useState(null);         
+    const [showAddRow, setShowAddRow] = useState(false);      
     const [newRowValues, setNewRowValues] = useState({});
-    const [showAddColumn, setShowAddColumn] = useState(false);// modal thêm cột
+    const [showAddColumn, setShowAddColumn] = useState(false);
     const [newColumn, setNewColumn] = useState({ columnName: '', label: '', dataType: 'NVARCHAR(255)' });
     // ===== Sheet moi dong + bang nhap lieu truc tiep (Data Grid) =====
     const [showAddSheet, setShowAddSheet] = useState(false);
@@ -82,8 +82,6 @@ export default function WarehouseExcelViewer() {
         totalRows,
         search,
         setSearch,
-        sort,
-        handleSort,
         refresh,
     } = useWarehouseRows({ source, onLoaded: handleRowsLoaded });
 
@@ -304,9 +302,6 @@ export default function WarehouseExcelViewer() {
                 onStartEdit={startEdit}
                 onCancelEdit={cancelEdit}
                 onSaveEdit={saveEdit}
-                sortBy={sort.by}
-                sortDir={sort.dir}
-                onSort={handleSort}
             />
 
             {/* Footer phân trang */}
