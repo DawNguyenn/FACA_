@@ -93,8 +93,21 @@ export const isAdmin = () => getUserRoleId(getCurrentUser()) === ROLE_ID.ADMIN;
 export const hasRole = (roles = []) => roles.includes(getUserRoleId(getCurrentUser()));
 
 /**
+ * Check whether a given user object may edit warehouse data.
+ * Admin (1) and Warehouse (4) roles are allowed; all others are read-only.
+ * Dùng cho thành phần đã có sẵn object user (vd Header) để phản ứng ngay khi
+ * vai trò thay đổi (không cần đọc lại localStorage).
+ * @param {object|null} user
+ * @returns {boolean}
+ */
+export const canEditWarehouseUser = (user) => {
+    const id = getUserRoleId(user);
+    return id === ROLE_ID.ADMIN || id === ROLE_ID.WAREHOUSE;
+};
+
+/**
  * Check whether the current user can edit warehouse data.
  * Admin (1) and Warehouse (4) roles are allowed; all others are read-only.
  * @returns {boolean}
  */
-export const canEditWarehouse = () => hasRole([ROLE_ID.ADMIN, ROLE_ID.WAREHOUSE]);
+export const canEditWarehouse = () => canEditWarehouseUser(getCurrentUser());

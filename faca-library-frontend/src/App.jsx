@@ -11,11 +11,13 @@ import IssuesPage from './pages/IssuesPage';
 import ErrorReportsPage from './pages/ErrorReportsPage';
 import RoleRequestPage from './pages/RoleRequestPage';
 import WarehouseExcelViewer from './pages/WarehouseExcelViewer';
+import WarehouseEditPage from './pages/WarehouseEditPage';
 import InventoryLotsPage from './pages/InventoryLotsPage';
+import SlideSearchPage from './pages/SlideSearchPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ToastProvider from './components/common/ToastProvider';
-import { isAdmin } from './services/authUtils';
+import { isAdmin, canEditWarehouse } from './services/authUtils';
 
 // Component layout chứa Header, Nội dung chính và Footer
 const MainLayout = ({ children }) => {
@@ -48,6 +50,20 @@ const AdminRoute = ({ children }) => {
     }
     if (!isAdmin()) {
         return <Navigate to="/" replace />;
+    }
+    return children;
+};
+
+// Component bảo vệ Route "Edit Warehouse" (chỉ Admin & Warehouse được phép).
+// Người dùng không có quyền (vd User) cố tình vào URL trực tiếp sẽ bị chuyển hướng
+// về trang xem dữ liệu kho (Read-only) thay vì báo 403.
+const WarehouseEditRoute = ({ children }) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        return <Navigate to="/login" replace />;
+    }
+    if (!canEditWarehouse()) {
+        return <Navigate to="/warehouse" replace />;
     }
     return children;
 };
@@ -173,6 +189,18 @@ function App() {
                     }
                 />
 
+                {/* Edit Warehouse — trang chỉnh sửa dữ liệu kho (chỉ Admin & Warehouse) */}
+                <Route
+                    path="/warehouse/edit"
+                    element={
+                        <WarehouseEditRoute>
+                            <MainLayout>
+                                <WarehouseEditPage />
+                            </MainLayout>
+                        </WarehouseEditRoute>
+                    }
+                />
+
                 {/* Inventory Lots (tách riêng khỏi Kho dữ liệu Excel) */}
                 <Route
                     path="/warehouse/inventory-lots"
@@ -180,6 +208,18 @@ function App() {
                         <ProtectedRoute>
                             <MainLayout>
                                 <InventoryLotsPage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Tìm kiếm nội dung từng slide PowerPoint + xem đúng slide qua iframe */}
+                <Route
+                    path="/search"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <SlideSearchPage />
                             </MainLayout>
                         </ProtectedRoute>
                     }

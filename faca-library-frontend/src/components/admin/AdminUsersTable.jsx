@@ -53,7 +53,7 @@ export default function AdminUsersTable({
                             <td className="px-4 py-3"><div className="h-4 w-10 rounded bg-slate-200" /></td>
                             <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-9 w-9 rounded-full bg-slate-200" />
+                                    <div className="h-9 w-9 min-h-[36px] min-w-[36px] shrink-0 rounded-full bg-slate-200" />
                                     <div className="h-4 w-28 rounded bg-slate-200" />
                                 </div>
                             </td>
@@ -80,13 +80,14 @@ export default function AdminUsersTable({
                                 <td className="px-4 py-3">
                                     <div className="flex items-center gap-3">
                                         {avatarUrl ? (
-                                            <img src={avatarUrl} alt={fullName} className="h-9 w-9 rounded-full object-cover" />
+                                            // shrink-0 + size cố định 36px: flex không bóp méo avatar khi tên dài
+                                            <img src={avatarUrl} alt={fullName} className="h-9 w-9 min-h-[36px] min-w-[36px] shrink-0 rounded-full object-cover" />
                                         ) : (
-                                            <span className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(fullName)}`}>
+                                            <span className={`flex h-9 w-9 min-h-[36px] min-w-[36px] shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ${avatarColor(fullName)}`}>
                                                 {getInitials(fullName)}
                                             </span>
                                         )}
-                                        <span className="text-sm font-medium text-slate-800">{fullName}</span>
+                                        <span title={fullName} className="min-w-0 max-w-[14rem] truncate text-sm font-medium text-slate-800">{fullName}</span>
                                     </div>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-slate-500">{user.email}</td>

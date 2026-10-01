@@ -36,6 +36,7 @@ const inventoryListRoutes = require('./routes/inventoryListRoutes');
 const inventoryDataRoutes = require('./routes/warehouseDataRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const slideRoutes = require('./routes/slideRoutes');
 
 app.use('/api/issues', issueRoutes);
 app.use('/api/auth', authRoutes);
@@ -46,6 +47,9 @@ app.use('/api/role-requests', roleRequestRoutes);
 
 // Thư viện báo cáo lỗi PowerPoint (quét file .pptx từ thư mục OneDrive local)
 app.use('/api/reports', reportRoutes);
+
+// Tìm kiếm nội dung từng slide .pptx + nhảy trực tiếp tới slide (wdSlideIndex)
+app.use('/api/slides', slideRoutes);
 
 // Async Excel import pipeline & inventory list
 app.use('/api/inventory', inventoryImportRoutes);
@@ -113,6 +117,15 @@ async function ensureRoleRequestsSchema() {
 }
 
 ensureRoleRequestsSchema();
+
+
+// Cron quét chỉ mục slide .pptx tự động (mặc định 15 phút/lần, đổi qua SLIDE_CRON).
+try {
+  const { startSlideCron } = require('./services/cronScanner');
+  if (process.env.DISABLE_SLIDE_CRON !== '1') startSlideCron();
+} catch (error) {
+  console.warn('⚠️  Không khởi động được slide cron:', error.message);
+}
 
 
 // ==========================================

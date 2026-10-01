@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DataGrid, SelectColumn } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
-import { Loader2, Plus, Trash2, Columns3, Save, RotateCcw, AlertTriangle, Keyboard, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Columns3, Save, RotateCcw, AlertTriangle, Keyboard, X, Search } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '../common/ToastProvider';
 
@@ -62,8 +62,10 @@ const authHeaders = () => {
  *  - canEdit: chỉ Admin/Warehouse mới được sửa & lưu
  *  - labelFor: (columnName) => nhãn hiển thị (dùng COLUMN_LABELS của trang cha)
  *  - onSaved: callback sau khi lưu thành công (để trang cha load lại bảng xem)
+ *  - search: từ khóa lọc hiển thị (chỉ ẩn bớt dòng đang xem, KHÔNG đổi dữ liệu gốc)
+ *  - onStatsChange: callback báo số dòng đang tải/hiển thị để trang cha hiển thị badge
  */
-export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFor, onSaved }) {
+export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFor, onSaved, search = '', onStatsChange }) {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -86,6 +88,10 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
     toastRef.current = toast;
     const labelForRef = useRef(labelFor);
     labelForRef.current = labelFor;
+    const onStatsChangeRef = useRef(onStatsChange);
+    // Đồng bộ callback mới nhất vào ref trong EFFECT (không ghi ref khi đang render).
+    // Nhờ đó effect báo stats không re-run chỉ vì tham số fn đổi identity -> tránh lặp vô hạn với cha.
+    useEffect(() => { onStatsChangeRef.current = onStatsChange; });
 
     const nextRid = () => `r${ridRef.current++}`;
 
@@ -233,6 +239,27 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [columns, canEdit]);
 
+    // ===== Lọc hiển thị theo từ khóa tìm kiếm =====
+    // CHỈ lọc những dòng đang HIỂN THỊ; state `rows` (dữ liệu gốc để lưu) giữ nguyên.
+    // Khi không có từ khóa, trả về chính mảng `rows` (cùng tham chiếu) để tránh render thừa.
+    const visibleRows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return rows;
+        return rows.filter((row) =>
+            columns.some((c) => String(row[c.name] ?? '').toLowerCase().includes(q)),
+        );
+    }, [rows, columns, search]);
+
+    // Báo số liệu (tổng dòng tải về / dòng đang hiển thị / số cột / trạng thái) cho trang cha
+    useEffect(() => {
+        onStatsChangeRef.current?.({
+            loaded: rows.length,
+            visible: visibleRows.length,
+            columns: columns.length,
+            loading,
+        });
+    }, [rows.length, visibleRows.length, columns.length, loading]);
+
     // ===== Thao tác trên grid =====
     const requireEdit = () => {
         if (canEdit) return true;
@@ -241,7 +268,14 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
     };
 
     const handleRowsChange = (nextRows) => {
-        setRows(nextRows);
+        // Khi đang LỌC, Data Grid chỉ trả về các dòng đang hiển thị (đã sửa) -> phải ghép lại
+        // vào danh sách gốc theo __rid, nếu không các dòng bị ẩn bởi bộ lọc sẽ bị mất.
+        if (visibleRows !== rows) {
+            const byRid = new Map(nextRows.map((r) => [r.__rid, r]));
+            setRows((prev) => prev.map((r) => byRid.get(r.__rid) ?? r));
+        } else {
+            setRows(nextRows);
+        }
         setDirty(true);
     };
 
@@ -475,7 +509,7 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
                             Bảng nhập liệu — {sourceInfo?.label || source}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                            {rows.length} dòng × {columns.length} cột
+                            {visibleRows !== rows ? `${visibleRows.length}/${rows.length} dòng` : `${rows.length} dòng`} × {columns.length} cột
                             {sourceInfo?.table ? <> • <code className="rounded bg-slate-100 px-1">{sourceInfo.table}</code></> : null}
                             {dirty ? <span className="ml-2 font-semibold text-amber-600">• có thay đổi chưa lưu</span> : null}
                         </p>
@@ -553,6 +587,12 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
                 </button>
             </div>
 
+            {visibleRows !== rows && (
+                <p className="mb-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    <Search className="h-4 w-4" />
+                    Đang lọc theo từ khóa “{search.trim()}” — hiển thị {visibleRows.length}/{rows.length} dòng. Bỏ trống ô tìm kiếm để xem lại tất cả.
+                </p>
+            )}
             {!canEdit && (
                 <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
                     Bạn đang ở chế độ chỉ đọc — cần quyền Admin hoặc Warehouse để nhập liệu và lưu.
@@ -573,7 +613,7 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
                 <DataGrid
                     className="rdg-light rounded-xl"
                     columns={gridColumns}
-                    rows={rows}
+                    rows={visibleRows}
                     rowKeyGetter={(row) => row.__rid}
                     onRowsChange={handleRowsChange}
                     onCellClick={handleCellClick}

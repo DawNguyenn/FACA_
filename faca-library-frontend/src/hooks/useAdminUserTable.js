@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react';
-import { PAGE_SIZE } from '../components/admin/adminConfig';
+import { PAGE_SIZE, userNameOf, userRoleOf, userCreatedAtOf } from '../components/admin/adminConfig';
+
+/**
+ * Bỏ dấu tiếng Việt/không ASCII để search không phân biệt hoa/thường + có/không dấu:
+ * 'nguyen' khớp 'Nguyễn', 'NGUYEN' khớp 'Nguyễn'. (NFD rồi gom combining marks,
+ * đ/Đ không tách được khi NFD nên thay tay).
+ */
+const stripDiacritics = (s) => String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, (ch) => (ch === 'đ' ? 'd' : 'D'))
+    .toLowerCase();
 
 /**
  * useAdminUserTable — toàn bộ logic bảng người dùng: số liệu KPI, lọc theo
@@ -36,30 +47,47 @@ export default function useAdminUserTable(users) {
     const stats = useMemo(() => {
         const now = new Date();
         const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        // API luôn trả status (fallback 'active'), createdAt lưu ở created_at (snake_case)
+        const statusOf = (u) => u.status || 'active';
         return {
             totalUsers: users.length,
-            activeUsers: users.filter((u) => u.status === 'active').length,
+            activeUsers: users.filter((u) => statusOf(u) === 'active').length,
             blockedInactiveUsers: users.filter((u) =>
-                u.status === 'blocked' || u.status === 'inactive').length,
+                statusOf(u) === 'blocked' || statusOf(u) === 'inactive').length,
             newThisMonth: users.filter((u) =>
-                String(u.createdAt).startsWith(currentKey)).length,
+                String(userCreatedAtOf(u) || '').startsWith(currentKey)).length,
         };
     }, [users]);
 
     const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
+        const q = stripDiacritics(search.trim());
         return users
-            .filter((u) =>
-                (roleFilter === 'All' || u.role === roleFilter) &&
-                (statusFilter === 'All' || u.status === statusFilter) &&
-                (q === '' ||
-                    u.name.toLowerCase().includes(q) ||
-                    u.email.toLowerCase().includes(q)))
+            // API trả snake_case (full_name / role_name / created_at) — dùng helper
+            // trong adminConfig để lọc & sắp xếp khớp đúng dữ liệu bảng hiển thị.
+            .filter((u) => {
+                const name = String(userNameOf(u) || '');
+                const email = String(u.email || '');
+                const role = String(userRoleOf(u) || '').toLowerCase();
+                const status = u.status || 'active';
+                return (roleFilter === 'All' || role === String(roleFilter).toLowerCase()) &&
+                    (statusFilter === 'All' || status === statusFilter) &&
+                    (q === '' ||
+                        stripDiacritics(name).includes(q) ||
+                        stripDiacritics(email).includes(q));
+            })
             .sort((a, b) => {
-                let av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
-                if (sortKey === 'createdAt') { av = new Date(av); bv = new Date(bv); }
-                const cmp = typeof av === 'string'
-                    ? av.localeCompare(String(bv))
+                let av; let bv;
+                if (sortKey === 'name') {
+                    av = userNameOf(a); bv = userNameOf(b);
+                } else if (sortKey === 'createdAt') {
+                    // new Date(undefined) -> Invalid Date làm sort chết; quy về timestamp (0 nếu thiếu)
+                    av = new Date(userCreatedAtOf(a) || 0).getTime() || 0;
+                    bv = new Date(userCreatedAtOf(b) || 0).getTime() || 0;
+                } else {
+                    av = a[sortKey] ?? ''; bv = b[sortKey] ?? '';
+                }
+                const cmp = (typeof av === 'string' && typeof bv === 'string')
+                    ? av.localeCompare(bv, undefined, { sensitivity: 'base' })
                     : (av < bv ? -1 : av > bv ? 1 : 0);
                 return sortDir === 'asc' ? cmp : -cmp;
             });

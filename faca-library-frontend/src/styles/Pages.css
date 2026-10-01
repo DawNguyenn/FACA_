@@ -179,7 +179,9 @@
 }
 
 .reports-search {
-    display: inline-flex;
+    display: flex;
+    flex: 1;
+    min-width: 0;
     align-items: center;
     gap: 8px;
     padding: 7px 12px;
@@ -187,6 +189,7 @@
     border: 1px solid #d1d5db;
     border-radius: 999px;
     color: #9ca3af;
+    cursor: text;
     transition: border-color 0.2s ease;
 }
 
@@ -195,12 +198,16 @@
 }
 
 .reports-search input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
     border: none;
     outline: none;
     background: transparent;
     font-size: 0.8rem;
     color: #374151;
-    width: 220px;
+    padding: 0;
 }
 
 .reports-sync-btn {
@@ -694,3 +701,525 @@
     font-style: italic;
     color: #9ca3af;
 }
+
+/* ================================================================
+   SlideSearchPage — Tìm nội dung trong từng slide PowerPoint
+   ================================================================ */
+/* Trang tìm slide cần rộng hơn trang Issues để khung xem đủ chỗ */
+.slide-page {
+    max-width: 1400px;
+}
+
+/* Thông báo dạng "cảnh báo" cho .reports-notice (đã có .ok / .error) */
+.reports-notice.warn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* Thanh thống kê độ phủ chỉ mục */
+.slide-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: 0.78rem;
+    color: #374151;
+}
+
+.slide-stats-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background-color: #ffffff;
+    font-weight: 600;
+}
+
+.slide-stats-item.warn {
+    border-color: #fcd34d;
+    background-color: #fffbeb;
+    color: #92400e;
+}
+
+.slide-tabs {
+    margin-bottom: 14px;
+}
+
+/* 2 cột: danh sách kết quả (trái) + khung nhúng slide (phải) */
+.slide-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.slide-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 72vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.slide-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.slide-card:hover {
+    border-color: #c00000;
+    box-shadow: 0 6px 16px rgba(192, 0, 0, 0.12);
+}
+
+.slide-card.active {
+    border-color: #c00000;
+    box-shadow: 0 0 0 2px rgba(192, 0, 0, 0.18);
+}
+
+.slide-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.slide-card-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #111827;
+    word-break: break-word;
+}
+
+.slide-card-snippet {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: #6b7280;
+    word-break: break-word;
+}
+
+.slide-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Nhãn "Chưa có nội dung" cho file OneDrive chưa tải về máy */
+.slide-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.slide-badge.pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* Khung xem slide (PDF trong trình duyệt / ảnh render từ máy chủ) */
+.slide-viewer {
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 16px;
+}
+
+.slide-viewer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+}
+
+.slide-viewer-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #111827;
+    word-break: break-word;
+}
+
+.slide-viewer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.slide-viewer-actions .reports-sync-btn {
+    text-decoration: none;
+}
+
+.slide-viewer-frame {
+    min-height: 520px;
+    background-color: #0f172a;
+}
+
+.slide-viewer-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 520px;
+    padding: 24px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    background-color: #f9fafb;
+}
+
+.slide-viewer-note {
+    margin: 0;
+    padding: 8px 14px;
+    border-top: 1px solid #e5e7eb;
+    background-color: #fffbeb;
+    font-size: 0.7rem;
+    font-style: italic;
+    color: #92400e;
+}
+
+/* Trên màn hình hẹp: xếp dọc, khung xem không dính theo scroll */
+@media (max-width: 980px) {
+    .slide-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .slide-list {
+        max-height: none;
+    }
+
+    .slide-viewer {
+        position: static;
+    }
+
+    .slide-viewer-frame,
+    .slide-viewer-fallback {
+        min-height: 380px;
+    }
+}
+
+/* ================================================================
+   PDF Viewer trong trinh duyet (.pptx -> .pdf -> pdf.js canvas)
+   ================================================================ */
+.pdf-mode-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 12px;
+    background-color: #f9fafb;
+}
+
+.pdf-searchbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+}
+
+.pdf-searchbar:focus-within {
+    border-color: #c00000;
+}
+
+.pdf-searchbar-icon {
+    flex-shrink: 0;
+    color: #9ca3af;
+}
+
+.pdf-searchbar input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.8rem;
+    color: #374151;
+}
+
+.pdf-searchbar-count {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.pdf-searchbar button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.pdf-searchbar button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pdf-searchbar button:hover:not(:disabled) {
+    border-color: #c00000;
+    color: #c00000;
+}
+
+.pdf-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pdf-canvas-wrap {
+    position: relative;
+    min-height: 420px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #ffffff;
+}
+
+.pdf-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* Trang thai "dang convert / dang tai / loi": phu de canvas thay vi day canvas xuong
+   (slide-viewer-fallback dung chung voi che do anh nen phai ghi de vi tri). */
+.pdf-canvas-wrap .slide-viewer-fallback {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    min-height: 0;
+    background-color: rgba(249, 250, 251, 0.93);
+}
+
+/* Text-layer phu khit canvas de highlight truc tiep tren slide */
+.pdf-textlayer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.pdf-textline {
+    position: absolute;
+    white-space: pre;
+    line-height: 1;
+    color: transparent;
+    transform-origin: top left;
+}
+
+.pdf-textline .pdf-hl {
+    background-color: rgba(250, 204, 21, 0.55);
+    border-radius: 2px;
+    color: inherit;
+}
+
+.pdf-textline .pdf-hl.active {
+    background-color: rgba(239, 68, 68, 0.65);
+    outline: 1px solid #c00000;
+}
+
+.pdf-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: #4b5563;
+}
+
+.pdf-pager button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #ffffff;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pdf-pager button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pdf-pager-matches {
+    font-size: 0.72rem;
+    color: #6b7280;
+}
+
+/* ================================================================
+   Xem slide bang ANH render tu may chu (du phong khi PDF convert loi)
+   ================================================================ */
+
+/* Nut chuyen doi giua "PDF + Tim text" / "Anh slide" */
+.slide-mode-switch {
+    display: flex;
+    width: fit-content;
+    margin: 10px auto;
+    padding: 3px;
+    gap: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background-color: #f3f4f6;
+}
+
+.slide-mode-switch button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.slide-mode-switch button:hover {
+    color: #111827;
+}
+
+.slide-mode-switch button.active {
+    background-color: #ffffff;
+    color: #c00000;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* Vung chua anh slide: nen trang de slide noi bat, khong phai nen den */
+.slide-image-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 520px;
+    height: 62vh;
+    padding: 12px;
+    background-color: #f9fafb;
+}
+
+/* Lop " dang tai " phu len anh khi render lau */
+.slide-image-wrap .slide-viewer-fallback {
+    position: absolute;
+    inset: 0;
+    background-color: #f9fafb;
+}
+
+.slide-image {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+
+/* --- Header khung xem: tên file (cắt dấu 3 chấm) + chip slide + chip nguồn --- */
+
+/* Tên file dài -> cắt bằng ellipsis thay vì đẩy vỡ layout */
+.slide-viewer-filename {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Nhóm chip thông tin (số slide + thư mục nguồn) */
+.slide-viewer-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.slide-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 260px;
+    padding: 2px 9px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background-color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.slide-meta-chip.accent {
+    border-color: #fecaca;
+    background-color: #fef2f2;
+    color: #c00000;
+    font-weight: 700;
+}
+
+.slide-meta-chip.path {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+/* Thư mục nguồn có thể rất dài -> cắt bằng ellipsis, giữ title để hover xem đầy đủ */
+.slide-meta-path {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Màn hình hẹp: cho chip nguồn co lại thay vì đẩy nút bấm xuống hàng */
+@media (max-width: 1100px) {
+    .slide-meta-chip.path {
+        max-width: 150px;
+    }
+}
+
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    object-fit: contain;
+}
+
+

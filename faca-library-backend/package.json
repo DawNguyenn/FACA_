@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@xmldom/xmldom": "^0.9.12",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -21,8 +22,11 @@
     "jwks-rsa": "^4.1.0",
     "mssql": "^12.7.0",
     "multer": "^2.3.0",
+    "node-cron": "^4.6.0",
     "nodemailer": "^10.0.10",
-    "xlsx": "^0.18.5"
+    "pizzip": "^3.3.0",
+    "xlsx": "^0.18.5",
+    "xmldom": "^0.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

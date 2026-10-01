@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import {
     Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User,
     Menu, X, ShieldCheck, Search, Loader, ChevronDown,
-    KeyRound, FileSpreadsheet, Boxes
+    KeyRound, FileSpreadsheet, Boxes, Pencil
 } from 'lucide-react';
 import axios from 'axios';
+import { canEditWarehouseUser } from '../../services/authUtils';
 import '../../styles/Header.css';
 
 const Header = () => {
@@ -101,6 +102,10 @@ const Header = () => {
 
     const avatarUrl = user ? (user.avatar_url || user.AvatarUrl || user.avatarUrl) : null;
 
+    // Quyền chỉnh sửa kho (Admin & Warehouse): dùng để hiện/ẩn mục "Edit Warehouse".
+    // Các vai trò khác (User, Staff, Engineer, QA...) KHÔNG thấy mục này.
+    const canEditWh = canEditWarehouseUser(user);
+
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -117,9 +122,18 @@ const Header = () => {
 
     // Danh mục con menu sổ xuống
     const dropdownItems = {
+        // Quản lý Lỗi: thư viện báo cáo FACA + tìm kiếm nội dung bên trong từng slide
+        issues: [
+            { label: t('header.facaReports'), to: '/issues/reports', icon: FileText },
+            { label: t('header.slideSearch'), to: '/search', icon: Search },
+        ],
         warehouse: [
             { label: t('header.warehouseExcel'), to: '/warehouse', icon: FileSpreadsheet },
             { label: t('header.warehouseLots'), to: '/warehouse/inventory-lots', icon: Boxes },
+            // Edit Warehouse — RBAC: chỉ Admin (role 1) & Warehouse (role 4); các role khác ẩn hẳn khỏi dropdown
+            ...(canEditWh
+                ? [{ label: t('header.editWarehouse'), to: '/warehouse/edit', icon: Pencil }]
+                : []),
         ],
         admin: [
             { label: t('header.adminUsers'), to: '/admin/users', icon: ShieldCheck },
@@ -170,12 +184,25 @@ const Header = () => {
                         </Link>
                     </div>
 
-                    {/* Quan ly Loi - di thang toi Bao cao FACA */}
-                    <div className={`nav-item ${location.pathname.startsWith('/issues') ? 'active' : ''}`} onClick={closeDropdowns}>
+                    {/* Quan ly Loi - menu con: Thu vien bao cao FACA + Tim kiem slide */}
+                    <div
+                        className={`nav-item nav-dropdown ${location.pathname.startsWith('/issues') || location.pathname === '/search' ? 'active' : ''}`}
+                        onClick={() => toggleDropdown('issues')}
+                        aria-expanded={openDropdown === 'issues'}
+                    >
                         <FileText size={18} />
-                        <Link to="/issues/reports" style={{ color: 'inherit', textDecoration: 'none' }}>
-                            <span>{t('header.issues')}</span>
-                        </Link>
+                        <span>{t('header.issues')}</span>
+                        <ChevronDown size={14} className="nav-chevron" />
+                        {openDropdown === 'issues' && (
+                            <div className="nav-dropdown-menu" onClick={closeDropdowns}>
+                                {dropdownItems.issues.map((item) => (
+                                    <Link key={item.to} to={item.to} className="nav-dropdown-item" onClick={closeDropdowns}>
+                                        <item.icon size={16} />
+                                        <span className="nav-dropdown-label">{item.label}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Kho NPI & Vat tu */}
