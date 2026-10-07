@@ -36,6 +36,11 @@ const {
     deleteStagingRowHandler,
     deleteStagingColumnHandler,
     bulkSaveHandler,
+    getSheetMetaHandler,
+    updateSheetMetaHandler,
+    listAuditLogsHandler,
+    listAuditTablesHandler,
+    restoreAuditLogHandler,
 } = require('../controllers/stagingDataController');
 
 /**
@@ -111,6 +116,21 @@ router.get('/sources', authMiddleware, listSourcesHandler);
 const warehouseEditor = requireRoles([1, 4]);
 router.post('/sources', authMiddleware, warehouseEditor, createSourceHandler);
 router.delete('/sources/:source', authMiddleware, warehouseEditor, deleteSourceHandler);
+
+// Metadata HEADER của sheet (thông tin file gốc hiển thị trên đầu bảng dữ liệu kho):
+//   GET /api/warehouse/sources/:source/meta  — xem (mọi user đã đăng nhập)
+//   PUT /api/warehouse/sources/:source/meta  — sửa (chỉ Admin & Warehouse)
+router.get('/sources/:source/meta', authMiddleware, getSheetMetaHandler);
+router.put('/sources/:source/meta', authMiddleware, warehouseEditor, updateSheetMetaHandler);
+
+// Nhật ký & lịch sử chỉnh sửa dữ liệu (Audit Log) — ai đã sửa gì, lúc nào, giá trị trước/sau:
+//   GET /api/warehouse/audit-logs         — danh sách (lọc table/action/ngày/người + phân trang)
+//   GET /api/warehouse/audit-logs/tables  — danh sách bảng có phát sinh nhật ký
+// PHẢI đăng ký TRƯỚC route '/:source' để không bị Express bắt nhầm "audit-logs" là tên sheet.
+router.get('/audit-logs/tables', authMiddleware, listAuditTablesHandler);
+router.get('/audit-logs', authMiddleware, listAuditLogsHandler);
+// Khôi phục dữ liệu từ nhật ký — CHỈ Admin (rollback DELETE/UPDATE đơn theo StagingID)
+router.post('/audit-logs/:id/restore', authMiddleware, requireRoles([1]), restoreAuditLogHandler);
 router.post('/:source/bulk-save', authMiddleware, warehouseEditor, bulkSaveHandler);
 router.get('/:source', authMiddleware, listStagingGeneric);
 router.put('/:source/rows/:id', authMiddleware, warehouseEditor, updateStagingRowHandler);

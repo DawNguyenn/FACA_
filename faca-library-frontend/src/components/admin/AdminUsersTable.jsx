@@ -6,6 +6,7 @@ import {
     STATUS_COLORS, getInitials, avatarColor, formatDate, roleColor,
     userIdOf, userNameOf, userRoleOf, userAvatarOf, userCreatedAtOf, nextStatus,
 } from './adminConfig';
+import Skeleton from '../common/Skeleton';
 
 /** Icon sắp xếp trên tiêu đề cột (Name / Email / Joined Date). */
 function SortIcon({ columnKey, sortKey, sortDir }) {
@@ -48,23 +49,7 @@ export default function AdminUsersTable({
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                     {/* -------- Loading skeleton rows -------- */}
-                    {loading && Array.from({ length: 5 }).map((_, i) => (
-                        <tr key={`skeleton-${i}`} className="animate-pulse">
-                            <td className="px-4 py-3"><div className="h-4 w-10 rounded bg-slate-200" /></td>
-                            <td className="px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-9 w-9 min-h-[36px] min-w-[36px] shrink-0 rounded-full bg-slate-200" />
-                                    <div className="h-4 w-28 rounded bg-slate-200" />
-                                </div>
-                            </td>
-                            <td className="px-4 py-3"><div className="h-4 w-44 rounded bg-slate-200" /></td>
-                            <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-slate-200" /></td>
-                            <td className="px-4 py-3"><div className="h-4 w-24 rounded bg-slate-200" /></td>
-                            <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-slate-200" /></td>
-                            <td className="px-4 py-3"><div className="h-4 w-24 rounded bg-slate-200" /></td>
-                            <td className="px-4 py-3"><div className="ml-auto h-6 w-24 rounded bg-slate-200" /></td>
-                        </tr>
-                    ))}
+                    {loading && <Skeleton variant="table-row" rows={5} cols={8} />}
 
                     {!loading && pagedUsers.map((user) => {
                         const userId = userIdOf(user) ?? 'N/A';

@@ -118,6 +118,39 @@ async function ensureRoleRequestsSchema() {
 
 ensureRoleRequestsSchema();
 
+/**
+ * dbo.Staging_SheetMeta: metadata header của từng sheet kho (tên file gốc,
+ * người nhập, thời điểm nhập, dự án/build, trạng thái, mô tả).
+ * Tự tạo idempotent — không đụng tới dữ liệu staging hiện có.
+ */
+async function ensureSheetMeta() {
+    try {
+        const { ensureSheetMetaSchema } = require('./services/sheetMetaService');
+        const pool = await poolPromise;
+        await ensureSheetMetaSchema(pool);
+        console.log('✅ Bảng dbo.Staging_SheetMeta đã sẵn sàng (metadata header cho sheet kho).');
+    } catch (error) {
+        console.warn('⚠️  Bỏ qua kiểm tra schema dbo.Staging_SheetMeta:', error.message);
+    }
+}
+ensureSheetMeta();
+
+/**
+ * dbo.data_audit_logs: nhật ký thao tác dữ liệu (ai sửa / lúc nào / sửa gì /
+ * giá trị trước-sau). Tự tạo idempotent — không ảnh hưởng dữ liệu hiện có.
+ */
+async function ensureAuditLogs() {
+    try {
+        const { ensureAuditLogsSchema } = require('./services/auditLogService');
+        const pool = await poolPromise;
+        await ensureAuditLogsSchema(pool);
+        console.log('✅ Bảng dbo.data_audit_logs đã sẵn sàng (nhật ký chỉnh sửa dữ liệu).');
+    } catch (error) {
+        console.warn('⚠️  Bỏ qua kiểm tra schema dbo.data_audit_logs:', error.message);
+    }
+}
+ensureAuditLogs();
+
 
 // Cron quét chỉ mục slide .pptx tự động (mặc định 15 phút/lần, đổi qua SLIDE_CRON).
 try {
@@ -129,7 +162,20 @@ try {
 
 
 // ==========================================
-// 4. KHỞI CHẠY SERVER
+// 4. KIỂM TRA SMTP KHI KHỞI ĐỘNG (tùy chọn, không chặn)
+// ==========================================
+// Log chi tiết mã response / TLS handshake để chẩn đoán lỗi gửi OTP trong
+// mạng nội bộ (firewall/proxy doanh nghiệp). Chạy `npm run test:smtp` để
+// chẩn đoán đầy đủ hơn (raw SMTP + DNS SPF/DKIM/DMARC + REST HTTPS 443).
+try {
+  const { verifyOnStartup } = require('./controllers/mailer');
+  verifyOnStartup(); // fire-and-forget — bên trong đã try/catch toàn bộ
+} catch (error) {
+  console.warn('⚠️  Không khởi động được kiểm tra SMTP:', error.message);
+}
+
+// ==========================================
+// 5. KHỞI CHẠY SERVER
 // ==========================================
 app.listen(PORT, () => {
   console.log(`🚀 Server FACA Library Backend đang chạy tại: http://localhost:${PORT}`);

@@ -49,7 +49,7 @@ export default function UserFormModal({ mode, initial, onCancel, onSubmit }) {
         'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500';
 
     return (
-        <ModalShell>
+        <ModalShell onClose={onCancel}>
             <div className="flex items-start gap-4">
                 <div className="flex-1">
                     <h2 className="text-lg font-bold text-slate-900">

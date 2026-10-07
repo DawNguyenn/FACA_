@@ -5,12 +5,14 @@ import { ShieldCheck, AlertCircle, Cpu, Mail, CheckCircle2, FileText, Database, 
 import axios from 'axios';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 import PasswordInput from '../../components/common/PasswordInput';
+import { useToast } from '../../components/common/ToastProvider';
 import i18n from '../../i18n';
 import '../../styles/Auth.css';
 
 const Login = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const toast = useToast();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -61,9 +63,10 @@ const Login = () => {
                 // Lưu cả token và user vào LocalStorage
                 localStorage.setItem('token', res.data.token);
                 localStorage.setItem('user', JSON.stringify(res.data.user));
-                // Chuyển hướng về trang chủ & reload nhẹ để Header nhận dữ liệu ngay
-                navigate('/');
-                window.location.reload();
+                // Điều hướng MƯỢT qua React Router — KHÔNG reload toàn trang.
+                // Header tự gọi lại /auth/me khi mount nên không cần reload để nhận dữ liệu.
+                navigate('/', { replace: true });
+                toast.success('Đăng nhập thành công!');
             }
         } catch (err) {
             console.error("Lỗi đăng nhập email:", err);

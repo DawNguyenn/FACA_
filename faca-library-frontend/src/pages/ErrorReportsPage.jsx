@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
-    Zap, Eye, Wrench, Layers, Loader, AlertCircle, RefreshCw, ExternalLink, Presentation, MonitorPlay, Search
+    Zap, Eye, Wrench, Layers, Loader, RefreshCw, ExternalLink, Presentation, MonitorPlay, Search
 } from 'lucide-react';
+import { useToast } from '../components/common/ToastProvider';
 import '../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -32,15 +33,14 @@ const CATEGORY_LABEL_KEYS = {
  */
 const ErrorReportsPage = () => {
     const { t } = useTranslation();
+    const toast = useToast();
     const [searchParams, setSearchParams] = useSearchParams();
     const category = searchParams.get('category') || 'ALL';
     const search = searchParams.get('search') || '';
 
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [syncing, setSyncing] = useState(false);
-    const [notice, setNotice] = useState(null);
     const [searchInput, setSearchInput] = useState(search);
     const [reloadKey, setReloadKey] = useState(0);
 
@@ -50,7 +50,6 @@ const ErrorReportsPage = () => {
 
         const loadReports = async () => {
             setLoading(true);
-            setError(null);
             try {
                 const token = localStorage.getItem('token');
                 const res = await axios.get(`${API_URL}/reports`, {
@@ -62,7 +61,8 @@ const ErrorReportsPage = () => {
             } catch (err) {
                 if (axios.isCancel(err)) return;
                 console.error('Không thể tải danh sách báo cáo PowerPoint:', err);
-                setError(t('pages.loadFailReports'));
+                setReports([]);
+                toast.error(t('pages.loadFailReports'));
             } finally {
                 setLoading(false);
             }
@@ -70,6 +70,8 @@ const ErrorReportsPage = () => {
 
         loadReports();
         return () => controller.abort();
+        // toast không đưa vào deps: useToast trả object mới mỗi render -> tránh refetch lặp
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [category, search, reloadKey, t]);
 
     // Debounce ô tìm kiếm 400ms rồi ghi vào query string để URL luôn phản ánh bộ lọc
@@ -96,7 +98,6 @@ const ErrorReportsPage = () => {
     // POST /api/reports/sync — quét lại thư mục OneDrive local rồi tải lại danh sách
     const handleSync = async () => {
         setSyncing(true);
-        setNotice(null);
         try {
             const token = localStorage.getItem('token');
             const res = await axios.post(`${API_URL}/reports/sync`, {}, {
@@ -107,16 +108,15 @@ const ErrorReportsPage = () => {
             const warnings = summary.warnings || [];
 
             // Cảnh báo từ scanner (thư mục không tồn tại, prefix SharePoint chưa đúng...) hiện kèm kết quả
-            setNotice({
-                type: warnings.length ? 'error' : 'ok',
-                text: warnings.length
-                    ? `${t('pages.syncDone', { count: total })} ${warnings[0]}`
-                    : t('pages.syncDone', { count: total }),
-            });
+            if (warnings.length) {
+                toast.error(`${t('pages.syncDone', { count: total })} ${warnings[0]}`);
+            } else {
+                toast.success(t('pages.syncDone', { count: total }));
+            }
             setReloadKey((key) => key + 1);
         } catch (err) {
             console.error('Quét thư mục báo cáo thất bại:', err);
-            setNotice({ type: 'error', text: err.response?.data?.message || t('pages.syncFail') });
+            toast.error(err.response?.data?.message || t('pages.syncFail'));
         } finally {
             setSyncing(false);
         }
@@ -184,11 +184,7 @@ const ErrorReportsPage = () => {
                 </div>
             </div>
 
-            {notice && (
-                <div className={`reports-notice ${notice.type === 'error' ? 'error' : 'ok'}`}>{notice.text}</div>
-            )}
-
-            {!loading && !error && reports.length > 0 && (
+            {!loading && reports.length > 0 && (
                 <div className="reports-count">{t('pages.reportsCount', { count: reports.length })}</div>
             )}
 
@@ -196,11 +192,6 @@ const ErrorReportsPage = () => {
                 <div className="issues-loading">
                     <Loader size={26} className="spin" />
                     <span>{t('common.loading')}</span>
-                </div>
-            ) : error ? (
-                <div className="issues-empty">
-                    <AlertCircle size={22} />
-                    <span>{error}</span>
                 </div>
             ) : reports.length === 0 ? (
                 <div className="issues-empty">

@@ -4,6 +4,7 @@ import 'react-data-grid/lib/styles.css';
 import { Loader2, Plus, Trash2, Columns3, Save, RotateCcw, AlertTriangle, Keyboard, X, Search } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '../common/ToastProvider';
+import { useQueryClient } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -67,6 +68,7 @@ const authHeaders = () => {
  */
 export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFor, onSaved, search = '', onStatsChange }) {
     const toast = useToast();
+    const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [columns, setColumns] = useState([]);      // [{ name, label, dataType }]
@@ -478,6 +480,8 @@ export default function WarehouseDataGrid({ source, sourceInfo, canEdit, labelFo
                 setPendingNewCols([]);
                 setDeletedRowIds(new Set());
                 await loadData();
+                // Làm mới cache nhật ký để trang "Lịch sử chỉnh sửa" phản ánh ngay thay đổi vừa lưu
+                queryClient.invalidateQueries({ queryKey: ['auditLogs'] });
                 if (onSaved) onSaved();
             } else {
                 toast.error(data.message || 'Lưu dữ liệu thất bại.');

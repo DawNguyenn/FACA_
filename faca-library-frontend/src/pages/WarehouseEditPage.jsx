@@ -1,6 +1,9 @@
 import { useCallback, useState } from 'react';
 import WarehouseDataGrid from '../components/warehouse/WarehouseDataGrid';
 import WarehouseToolbar from '../components/warehouse/WarehouseToolbar';
+import SheetHeaderCard from '../components/warehouse/SheetHeaderCard';
+import SheetMetaModal from '../components/warehouse/SheetMetaModal';
+import useSheetHeader from '../hooks/useSheetHeader';
 import NewSheetModal from '../components/warehouse/NewSheetModal';
 import DeleteSheetModal from '../components/warehouse/DeleteSheetModal';
 import { FALLBACK_SOURCES, columnLabel } from '../components/warehouse/warehouseConfig';
@@ -43,6 +46,20 @@ export default function WarehouseEditPage() {
         fallbackSources: FALLBACK_SOURCES,
     });
     const activeSource = sources.find((s) => s.key === source) || sources[0] || FALLBACK_SOURCES[0];
+
+    // ===== Khối thông tin Header / Metadata của sheet (dùng chung key trạng thái với màn chỉ đọc) =====
+    const { header: sheetHeader, loading: sheetHeaderLoading, error: sheetHeaderError, reload: reloadSheetHeader } = useSheetHeader(source);
+    const [headerCollapsed, setHeaderCollapsed] = useState(
+        () => localStorage.getItem('warehouse_sheet_header_collapsed') === '1'
+    );
+    const [showMeta, setShowMeta] = useState(false);
+    const toggleHeaderCollapsed = useCallback(() => {
+        setHeaderCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem('warehouse_sheet_header_collapsed', next ? '1' : '0');
+            return next;
+        });
+    }, []);
 
     const notify = (msg, ok = true) => {
         setActionMsg({ ok, msg });
@@ -129,6 +146,17 @@ export default function WarehouseEditPage() {
                 actionMsg={actionMsg}
             />
 
+            {/* Khối thông tin Header / Metadata của sheet (thu gọn được) */}
+            <SheetHeaderCard
+                header={sheetHeader}
+                loading={sheetHeaderLoading}
+                error={sheetHeaderError}
+                collapsed={headerCollapsed}
+                onToggleCollapse={toggleHeaderCollapsed}
+                canEdit
+                onEdit={() => setShowMeta(true)}
+            />
+
             {/* Bảng nhập liệu trực tiếp (Data Grid) — sửa ô / thêm dòng / thêm cột / lưu */}
             <WarehouseDataGrid
                 key={activeSource.key}
@@ -164,6 +192,16 @@ export default function WarehouseEditPage() {
                 onSubmit={submitDeleteSheet}
                 deleting={deleting}
             />
+
+            {/* Modal sửa metadata header của sheet (chỉ Admin & Warehouse) */}
+            {showMeta && (
+                <SheetMetaModal
+                    source={activeSource.key}
+                    header={sheetHeader}
+                    onClose={() => setShowMeta(false)}
+                    onSaved={() => reloadSheetHeader()}
+                />
+            )}
         </div>
     );
 }

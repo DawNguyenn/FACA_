@@ -50,6 +50,88 @@ const clean = (v) => {
     return s === '' ? null : s;
 };
 
+/** DÒNG 1 (index 0) của sheet thường chứa TIÊU ĐỀ, vd: "Bảng chi tiết tồn kho ATW". */
+const TITLE_ROW = 0;
+
+/**
+ * Lấy ô đầu tiên có nội dung trên DÒNG 1 làm tiêu đề sheet.
+ * Trả null nếu dòng 1 trống (sheet không có title).
+ */
+function extractSheetTitle(row) {
+    if (!Array.isArray(row)) return null;
+    for (let i = 0; i < Math.min(row.length, 8); i++) {
+        const s = String(row[i] === null || row[i] === undefined ? '' : row[i]).trim();
+        if (s) return s.slice(0, 255);
+    }
+    return null;
+}
+
+/** Tạo bảng metadata nếu chưa có (idempotent) + bổ sung cột SheetTitle. */
+async function ensureSheetMetaTable(pool) {
+    await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Staging_SheetMeta')
+        BEGIN
+            CREATE TABLE dbo.Staging_SheetMeta (
+                SourceKey    NVARCHAR(30)   NOT NULL PRIMARY KEY,
+                SheetTitle   NVARCHAR(255)  NULL,
+                FileName     NVARCHAR(400)  NULL,
+                ImportedBy   NVARCHAR(200)  NULL,
+                ImportedAt   DATETIME2(0)   NULL,
+                ProjectCode  NVARCHAR(100)  NULL,
+                BuildVersion NVARCHAR(100)  NULL,
+                Status       NVARCHAR(30)   NOT NULL CONSTRAINT DF_SheetMeta_Status DEFAULT (N'ACTIVE'),
+                Description  NVARCHAR(1000) NULL,
+                UpdatedAt    DATETIME2(0)   NOT NULL CONSTRAINT DF_SheetMeta_UpdatedAt DEFAULT (SYSDATETIME())
+            );
+        END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns
+                       WHERE object_id = OBJECT_ID('dbo.Staging_SheetMeta') AND name = 'SheetTitle')
+            ALTER TABLE dbo.Staging_SheetMeta ADD SheetTitle NVARCHAR(255) NULL;
+    `);
+}
+
+/** Tìm SourceKey của sheet từ registry (theo TableName). */
+async function resolveSourceKey(pool, table) {
+    try {
+        const r = await pool.request()
+            .input('TableName', sql.NVarChar(128), String(table).replace(/^dbo\./i, ''))
+            .query('SELECT SourceKey FROM dbo.Staging_Sources WHERE TableName = @TableName;');
+        return r.recordset[0] ? r.recordset[0].SourceKey : null;
+    } catch {
+        return null; // chưa chạy migration registry -> bỏ qua
+    }
+}
+
+/** Lưu tiêu đề sheet + tên file vào dbo.Staging_SheetMeta (không ghi đè trường khác). */
+async function saveSheetTitle(pool, sourceKey, sheetTitle, fileName, importedAt) {
+    if (!sourceKey || !sheetTitle) return false;
+    try {
+        await ensureSheetMetaTable(pool);
+        await pool.request()
+            .input('SourceKey', sql.NVarChar(30), sourceKey)
+            .input('SheetTitle', sql.NVarChar(255), sheetTitle)
+            .input('FileName', sql.NVarChar(400), fileName || null)
+            .input('ImportedAt', sql.DateTime2, importedAt || new Date())
+            .query(`
+                MERGE dbo.Staging_SheetMeta AS T
+                USING (SELECT @SourceKey AS SourceKey) AS S
+                ON T.SourceKey = S.SourceKey
+                WHEN MATCHED THEN UPDATE SET
+                    SheetTitle = @SheetTitle,
+                    FileName = COALESCE(@FileName, T.FileName),
+                    ImportedAt = @ImportedAt,
+                    UpdatedAt = SYSDATETIME()
+                WHEN NOT MATCHED THEN INSERT
+                    (SourceKey, SheetTitle, FileName, ImportedAt, Status, UpdatedAt)
+                    VALUES (@SourceKey, @SheetTitle, @FileName, @ImportedAt, N'ACTIVE', SYSDATETIME());
+            `);
+        return true;
+    } catch (e) {
+        console.warn(`  ! Không lưu được tiêu đề sheet vào metadata: ${e.message}`);
+        return false;
+    }
+}
+
 /**
  * Xây mapping: index cột Excel → tên cột DB.
  * Với NVL: 3 nhóm "XUẤT HÀNG LẦN n" chiếm 3 cột (Date, DRI, Qty) mỗi nhóm.
@@ -88,6 +170,9 @@ function buildColumnIndices(header, map) {
             continue;
         }
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1, defval: '' });
+        // DÒNG 1 (index 0) là TIÊU ĐỀ sheet gốc, vd: "Bảng chi tiết tồn kho ATW".
+        // Dòng này KHÔNG thuộc phần dữ liệu nên trước đây bị bỏ qua.
+        const sheetTitle = extractSheetTitle(rows[TITLE_ROW]);
         const header = rows[HEADER_ROW].map((c) => String(c).trim());
         const idxMap = buildColumnIndices(header, map);
         const dbCols = idxMap.map((m) => `[${m.dbCol}]`).join(', ');
@@ -118,7 +203,14 @@ function buildColumnIndices(header, map) {
             if (batch.length >= 100) await flush();
         }
         await flush();
-        console.log(`✓ ${table}: nạp ${inserted} dòng`);
+
+        // Lưu tiêu đề dòng 1 vào metadata để Frontend hiển thị trên đầu bảng
+        const sourceKey = await resolveSourceKey(pool, table);
+        const saved = await saveSheetTitle(pool, sourceKey, sheetTitle, path.basename(EXCEL_PATH), new Date());
+        const titleInfo = sheetTitle
+            ? ` — tiêu đề: "${sheetTitle}"${saved ? '' : ' (chưa lưu được metadata)'}`
+            : ' — dòng 1 không có tiêu đề';
+        console.log(`✓ ${table}: nạp ${inserted} dòng${titleInfo}`);
     }
 
     await pool.close();

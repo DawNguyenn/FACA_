@@ -18,7 +18,7 @@ export default function ConfirmModal({ title, tone, icon, message, confirmLabel,
     }[tone];
 
     return (
-        <ModalShell>
+        <ModalShell onClose={() => { if (!busy) onCancel(); }}>
             <div className="flex flex-col items-center text-center">
                 <span className={`flex h-12 w-12 items-center justify-center rounded-full ${toneCls}`}>{icon}</span>
                 <h2 className="mt-4 text-lg font-bold text-slate-900">{title}</h2>

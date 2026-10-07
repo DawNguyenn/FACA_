@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import WarehouseToolbar from '../components/warehouse/WarehouseToolbar';
+import SheetHeaderCard from '../components/warehouse/SheetHeaderCard';
+import AuditHistoryModal from '../components/warehouse/AuditHistoryModal';
+import useSheetHeader from '../hooks/useSheetHeader';
 import WarehouseRowsTable from '../components/warehouse/WarehouseRowsTable';
 import WarehousePagination from '../components/warehouse/WarehousePagination';
 import { FALLBACK_SOURCES, makeColumnLabel } from '../components/warehouse/warehouseConfig';
@@ -41,6 +44,23 @@ export default function WarehouseExcelViewer() {
         handleSort,
     } = useWarehouseRows({ source });
 
+    // ===== Khối thông tin Header / Metadata của sheet (tên file gốc, người nhập, tổng bản ghi...) =====
+    const { header: sheetHeader, loading: sheetHeaderLoading, error: sheetHeaderError } = useSheetHeader(source);
+    // Trạng thái thu gọn được nhớ lại giữa các lần mở trang
+    const [headerCollapsed, setHeaderCollapsed] = useState(
+        () => localStorage.getItem('warehouse_sheet_header_collapsed') === '1'
+    );
+    const toggleHeaderCollapsed = useCallback(() => {
+        setHeaderCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem('warehouse_sheet_header_collapsed', next ? '1' : '0');
+            return next;
+        });
+    }, []);
+
+    // Lịch sử chỉnh sửa của 1 bản ghi: { table, id }
+    const [historyTarget, setHistoryTarget] = useState(null);
+
     // Toàn bộ cột hiển thị = cột gốc + cột tùy chỉnh
     const allColumns = useMemo(
         () => [...columns, ...customColumns.map((c) => c.ColumnName)],
@@ -50,6 +70,16 @@ export default function WarehouseExcelViewer() {
     const labelFor = useMemo(() => makeColumnLabel(customColumns), [customColumns]);
 
     const activeSource = sources.find((s) => s.key === source) || sources[0] || FALLBACK_SOURCES[0];
+
+    // Mở lịch sử chỉnh sửa cho 1 bản ghi của sheet hiện tại
+    const openHistory = useCallback((row) => {
+        if (!row || row.StagingID == null) return;
+        setHistoryTarget({
+            table: String(activeSource.table || '').replace(/^dbo\./i, ''),
+            id: row.StagingID,
+        });
+    }, [activeSource]);
+
     const rowOffset = (page - 1) * PAGE_LIMIT;
 
     return (
@@ -69,6 +99,15 @@ export default function WarehouseExcelViewer() {
                 actionMsg={null}
             />
 
+            {/* Khối thông tin Header / Metadata của sheet (có thể thu gọn) */}
+            <SheetHeaderCard
+                header={sheetHeader}
+                loading={sheetHeaderLoading}
+                error={sheetHeaderError}
+                collapsed={headerCollapsed}
+                onToggleCollapse={toggleHeaderCollapsed}
+            />
+
             {/* Bảng dữ liệu CHỈ XEM (Read-only Data Table) */}
             <WarehouseRowsTable
                 allColumns={allColumns}
@@ -82,6 +121,7 @@ export default function WarehouseExcelViewer() {
                 sortBy={sort.by}
                 sortDir={sort.dir}
                 onSort={handleSort}
+                onShowHistory={openHistory}
             />
 
             {/* Footer phân trang */}
@@ -93,6 +133,15 @@ export default function WarehouseExcelViewer() {
                 loading={loading}
                 onPageChange={setPage}
             />
+
+            {/* Modal lịch sử chỉnh sửa của bản ghi */}
+            {historyTarget && (
+                <AuditHistoryModal
+                    tableName={historyTarget.table}
+                    recordId={historyTarget.id}
+                    onClose={() => setHistoryTarget(null)}
+                />
+            )}
         </div>
     );
 }

@@ -13,10 +13,13 @@ import RoleRequestPage from './pages/RoleRequestPage';
 import WarehouseExcelViewer from './pages/WarehouseExcelViewer';
 import WarehouseEditPage from './pages/WarehouseEditPage';
 import InventoryLotsPage from './pages/InventoryLotsPage';
+import AuditLogPage from './pages/AuditLogPage';
 import SlideSearchPage from './pages/SlideSearchPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ToastProvider from './components/common/ToastProvider';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import NotFoundPage from './pages/NotFoundPage';
 import { isAdmin, canEditWarehouse } from './services/authUtils';
 
 // Component layout chứa Header, Nội dung chính và Footer
@@ -70,6 +73,7 @@ const WarehouseEditRoute = ({ children }) => {
 
 function App() {
     return (
+        <ErrorBoundary>
         <ToastProvider>
         <Router>
             <Routes>
@@ -213,6 +217,18 @@ function App() {
                     }
                 />
 
+                {/* Nhật ký & Lịch sử chỉnh sửa dữ liệu kho */}
+                <Route
+                    path="/warehouse/audit"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <AuditLogPage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
+
                 {/* Tìm kiếm nội dung từng slide PowerPoint + xem đúng slide qua iframe */}
                 <Route
                     path="/search"
@@ -225,11 +241,21 @@ function App() {
                     }
                 />
 
-                {/* Bắt các URL không tồn tại quay về Home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                {/* Trang 404 cho mọi URL không tồn tại (vẫn có Header/Footer, yêu cầu đăng nhập) */}
+                <Route
+                    path="*"
+                    element={
+                        <ProtectedRoute>
+                            <MainLayout>
+                                <NotFoundPage />
+                            </MainLayout>
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </Router>
         </ToastProvider>
+        </ErrorBoundary>
     );
 }
 

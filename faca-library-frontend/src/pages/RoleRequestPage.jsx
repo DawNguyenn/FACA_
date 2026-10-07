@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { ShieldCheck, Send, Loader, CheckCircle2, Clock, Ban, Trash2, X } from 'lucide-react';
+import { useToast } from '../components/common/ToastProvider';
 import '../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -12,6 +13,7 @@ const ROLE_NAMES = { 1: 'Admin', 2: 'Staff', 3: 'Engineer', 4: 'WareHouse', 5: '
 
 const RoleRequestPage = () => {
     const { t } = useTranslation();
+    const toast = useToast();
 
     const [roles, setRoles] = useState([]);
     const [myRequests, setMyRequests] = useState([]);
@@ -20,7 +22,6 @@ const RoleRequestPage = () => {
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
-    const [message, setMessage] = useState(null);
     // Xóa yêu cầu: id đang chờ xác nhận (bấm 2 bước tránh bấm nhầm) + id đang xóa
     const [confirmDeleteId, setConfirmDeleteId] = useState(null);
     const [removingId, setRemovingId] = useState(null);
@@ -43,19 +44,19 @@ const RoleRequestPage = () => {
                 setMyRequests(requestsRes.data.data || []);
                 setCurrentUser(me);
             } catch (err) {
-                setMessage({ type: 'error', text: err.message });
+                toast.error(err.message || t('pages.loadFail'));
             } finally {
                 setLoading(false);
             }
         };
         load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setMessage(null);
         if (!selectedRole) {
-            setMessage({ type: 'error', text: 'Vui lòng chọn vai trò mong muốn.' });
+            toast.error('Vui lòng chọn vai trò mong muốn.');
             return;
         }
         setSending(true);
@@ -66,7 +67,7 @@ const RoleRequestPage = () => {
                 { requested_role_id: selectedRole, reason },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setMessage({ type: 'success', text: t('pages.sentOk') });
+            toast.success(t('pages.sentOk'));
             setSelectedRole('');
             setReason('');
             const res = await axios.get(`${API_URL}/role-requests/me`, {
@@ -74,7 +75,7 @@ const RoleRequestPage = () => {
             });
             setMyRequests(res.data.data || []);
         } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data?.message || err.message });
+            toast.error(err.response?.data?.message || err.message);
         } finally {
             setSending(false);
         }
@@ -85,7 +86,6 @@ const RoleRequestPage = () => {
     // mất ở góc nhìn của người dùng, còn quản trị viên vẫn thấy đầy đủ ở trang Admin
     // cho tới khi chính Admin xóa vĩnh viễn.
     const handleDelete = async (id) => {
-        setMessage(null);
         setRemovingId(id);
         try {
             const token = localStorage.getItem('token');
@@ -93,12 +93,12 @@ const RoleRequestPage = () => {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setMyRequests((list) => list.filter((r) => r.request_id !== id));
-            setMessage({ type: 'success', text: res.data?.message || t('pages.deleteRequestOk') });
+            toast.success(res.data?.message || t('pages.deleteRequestOk'));
             // Đồng bộ lại Header (badge chờ duyệt) — không đổi với user thường,
             // nhưng đúng khi người thao tác là Admin (khi đó yêu cầu bị xóa thật).
             window.dispatchEvent(new Event('user:updated'));
         } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data?.message || err.message });
+            toast.error(err.response?.data?.message || err.message);
         } finally {
             setRemovingId(null);
             setConfirmDeleteId(null);
@@ -139,12 +139,6 @@ const RoleRequestPage = () => {
                 <span>{t('pages.roleTitle')}</span>
             </h1>
             <p className="role-subtitle">{t('pages.roleSubtitle')}</p>
-
-            {message && (
-                <div className={`role-alert ${message.type === 'success' ? 'ok' : 'err'}`}>
-                    {message.text}
-                </div>
-            )}
 
             {/* Form gửi yêu cầu */}
             <form className="role-form" onSubmit={handleSubmit}>

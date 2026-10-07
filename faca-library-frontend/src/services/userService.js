@@ -1,21 +1,6 @@
-import axios from 'axios';
+import apiClient, { toErrorMessage } from './apiClient';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-const http = axios.create({
-    baseURL: `${API_URL}/users`,
-    timeout: 10000,
-    headers: { 'Content-Type': 'application/json' },
-});
-
-const toErrorMessage = (error) => {
-    if (error.response && error.response.data && error.response.data.message) {
-        return error.response.data.message;
-    }
-    if (error.code === 'ECONNABORTED') return 'Kết nối bị quá thời gian chờ.';
-    if (!error.response) return 'Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại.';
-    return error.message || 'Có lỗi xảy ra.';
-};
+const BASE = '/users';
 
 /**
  * GET /api/users
@@ -24,7 +9,7 @@ const toErrorMessage = (error) => {
  */
 export const getUsers = async (params = {}) => {
     try {
-        const { data } = await http.get('/', { params });
+        const { data } = await apiClient.get(BASE, { params });
         return data.data || [];
     } catch (error) {
         throw new Error(toErrorMessage(error), { cause: error });
@@ -36,7 +21,7 @@ export const getUsers = async (params = {}) => {
  */
 export const getUserById = async (id) => {
     try {
-        const { data } = await http.get(`/${id}`);
+        const { data } = await apiClient.get(`${BASE}/${id}`);
         return data.data;
     } catch (error) {
         throw new Error(toErrorMessage(error), { cause: error });
@@ -50,7 +35,7 @@ export const getUserById = async (id) => {
  */
 export const createUser = async (payload) => {
     try {
-        const { data } = await http.post('/', payload);
+        const { data } = await apiClient.post(BASE, payload);
         return data.data;
     } catch (error) {
         throw new Error(toErrorMessage(error), { cause: error });
@@ -62,7 +47,7 @@ export const createUser = async (payload) => {
  */
 export const updateUser = async (id, payload) => {
     try {
-        const { data } = await http.put(`/${id}`, payload);
+        const { data } = await apiClient.put(`${BASE}/${id}`, payload);
         return data.data;
     } catch (error) {
         throw new Error(toErrorMessage(error), { cause: error });
@@ -74,7 +59,7 @@ export const updateUser = async (id, payload) => {
  */
 export const deleteUser = async (id) => {
     try {
-        await http.delete(`/${id}`);
+        await apiClient.delete(`${BASE}/${id}`);
     } catch (error) {
         throw new Error(toErrorMessage(error), { cause: error });
     }

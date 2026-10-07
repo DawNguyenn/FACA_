@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
     Cpu, FileText, Package, LayoutDashboard, LogOut, LogIn, UserCircle, User,
     Menu, X, ShieldCheck, Search, Loader, ChevronDown,
-    KeyRound, FileSpreadsheet, Boxes, Pencil
+    KeyRound, FileSpreadsheet, Boxes, Pencil, History
 } from 'lucide-react';
 import axios from 'axios';
 import { canEditWarehouseUser } from '../../services/authUtils';
@@ -130,6 +130,8 @@ const Header = () => {
         warehouse: [
             { label: t('header.warehouseExcel'), to: '/warehouse', icon: FileSpreadsheet },
             { label: t('header.warehouseLots'), to: '/warehouse/inventory-lots', icon: Boxes },
+            // Nhật ký & lịch sử chỉnh sửa — mọi user đã đăng nhập đều xem được
+            { label: t('header.auditLog'), to: '/warehouse/audit', icon: History },
             // Edit Warehouse — RBAC: chỉ Admin (role 1) & Warehouse (role 4); các role khác ẩn hẳn khỏi dropdown
             ...(canEditWh
                 ? [{ label: t('header.editWarehouse'), to: '/warehouse/edit', icon: Pencil }]

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const JSZip = require('jszip');
 const { sql, poolPromise } = require('../config/db');
+const { extractSheetTitle } = require('./sheetMetaService');
 
 // Column variants for dynamic header mapping (Case-insensitive & Trim)
 // Used to match Excel header names against multiple possible variants
@@ -501,6 +502,8 @@ async function processExcelStream(filePath, importId, userId) {
 
     let hasWorksheets = false;
     const sheetStats = {};
+    /** Tiêu đề dòng 1 của từng sheet: { [sheetName]: title } */
+    const capturedTitles = {};
 
     workbookReader.on('worksheet', (wsReader) => {
         if (streamError) return;
@@ -511,11 +514,19 @@ async function processExcelStream(filePath, importId, userId) {
         let sheetName = '';
         let sheetRowCount = 0;
         let sheetSkipped = false;
+        // Tiêu đề sheet nằm ở DÒNG 1 (vd: "Bảng chi tiết tồn kho ATW")
+        let sheetTitle = null;
 
         wsReader.on('row', (row) => {
             if (streamError || sheetSkipped) return;
 
             const rowNumber = row.number;
+
+            // DÒNG 1 = tiêu đề của sheet -> trích ra metadata (KHÔNG thuộc phần dữ liệu)
+            if (rowNumber === 1) {
+                sheetTitle = extractSheetTitle(row.values);
+                return;
+            }
 
             // Row 4 là header - validate và detect mapping cho sheet này
             if (rowNumber === HEADER_ROW) {
@@ -533,7 +544,7 @@ async function processExcelStream(filePath, importId, userId) {
                 // Detect column mapping cho sheet này
                 sheetColumnMap = detectSheetColumnMap(row);
                 console.log(`[importService] Sheet "${sheetName}" column map:`, sheetColumnMap);
-                sheetStats[sheetName] = { status: 'PROCESSING', mapping: sheetColumnMap };
+                sheetStats[sheetName] = { status: 'PROCESSING', mapping: sheetColumnMap, sheetTitle };
                 return;
             }
 
@@ -609,6 +620,7 @@ async function processExcelStream(filePath, importId, userId) {
                 }
             }
             console.log(`[importService] Sheet "${sheetName}" finished. Rows processed: ${sheetRowCount}`);
+            if (sheetTitle) capturedTitles[sheetName] = sheetTitle;
         });
 
         wsReader.on('error', (err) => {
@@ -662,6 +674,30 @@ async function processExcelStream(filePath, importId, userId) {
     const spResult = await spRequest.execute('dbo.sp_ProcessInventoryImport');
 
     // ----------------------------------------------------------------
+    // 2b. Lưu TIÊU ĐỀ dòng 1 (ô A1, vd "Bảng chi tiết tồn kho ATW") của sheet
+    //     đầu tiên vào dbo.FileImportHistory.SheetTitle.
+    // ----------------------------------------------------------------
+    const sheetTitles = Object.values(capturedTitles).filter(Boolean);
+    const primarySheetTitle = sheetTitles[0] || null;
+    if (primarySheetTitle) {
+        try {
+            const colCheck = await pool.request()
+                .query(`SELECT COL_LENGTH('dbo.FileImportHistory', 'SheetTitle') AS c;`);
+            if (colCheck.recordset[0] && colCheck.recordset[0].c != null) {
+                await pool.request()
+                    .input('ImportID', sql.Int, importId)
+                    .input('SheetTitle', sql.NVarChar(255), primarySheetTitle)
+                    .query(`UPDATE dbo.FileImportHistory SET SheetTitle = @SheetTitle WHERE ImportID = @ImportID;`);
+                console.log(`[importService] Sheet title: "${primarySheetTitle}"`);
+            } else {
+                console.warn('[importService] Cột FileImportHistory.SheetTitle chưa tồn tại (chạy sql/add_sheet_title_columns.sql).');
+            }
+        } catch (titleErr) {
+            console.warn('[importService] Không lưu được SheetTitle:', titleErr.message);
+        }
+    }
+
+    // ----------------------------------------------------------------
     // 3. Clean up the uploaded temp file and the reordered copy (if any)
     // ----------------------------------------------------------------
     fs.unlink(filePath, (err) => {
@@ -681,6 +717,8 @@ async function processExcelStream(filePath, importId, userId) {
         totalRows,
         spResult: spResult.recordset?.[0] || null,
         sheetStats,
+        sheetTitle: primarySheetTitle,
+        sheetTitles,
     };
     } catch (err) {
         // Clean up temp files even on error

@@ -2,19 +2,18 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { ShieldCheck, CheckCircle2, X, Loader, AlertCircle, Trash2, EyeOff } from 'lucide-react';
+import { useToast } from '../../components/common/ToastProvider';
 import '../../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const AdminRoleRequestsPage = () => {
     const { t } = useTranslation();
+    const toast = useToast();
 
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [filter, setFilter] = useState('pending');
-    // Thông báo thành công (vd: đã xóa vĩnh viễn yêu cầu)
-    const [notice, setNotice] = useState(null);
     // Xóa vĩnh viễn: id đang chờ xác nhận (bấm 2 bước tránh bấm nhầm) + id đang xóa
     const [confirmDeleteId, setConfirmDeleteId] = useState(null);
     const [removingId, setRemovingId] = useState(null);
@@ -27,21 +26,29 @@ const AdminRoleRequestsPage = () => {
                 headers: { Authorization: `Bearer ${token}` },
             })
             .then((res) => setRequests(res.data.data || []))
-            .catch(() => setError(t('pages.loadFail')))
+            .catch(() => {
+                setRequests([]);
+                toast.error(t('pages.loadFail'));
+            })
             .finally(() => setLoading(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filter, t]);
 
     const handleDecision = async (id, action) => {
         const token = localStorage.getItem('token');
         try {
-            await axios.put(`${API_URL}/role-requests/${id}/${action}`, null, {
+            const res = await axios.put(`${API_URL}/role-requests/${id}/${action}`, null, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             // Refresh + badge Header
             setRequests((prev) => prev.filter((r) => r.request_id !== id));
+            toast.success(
+                res.data?.message ||
+                (action === 'approve' ? 'Đã duyệt yêu cầu cấp quyền.' : 'Đã từ chối yêu cầu cấp quyền.')
+            );
             window.dispatchEvent(new Event('user:updated'));
         } catch (err) {
-            setError(err.response?.data?.message || t('pages.loadFail'));
+            toast.error(err.response?.data?.message || t('pages.loadFail'));
         }
     };
 
@@ -49,8 +56,6 @@ const AdminRoleRequestsPage = () => {
     // NGƯỜI DÙNG THƯỜNG xóa chỉ ẩn khỏi danh sách của họ (hidden_by_user = 1) nên
     // yêu cầu vẫn hiện ở trang này; chỉ khi quản trị viên xóa thì bản ghi mới mất hẳn.
     const handleDelete = async (id) => {
-        setNotice(null);
-        setError(null);
         setRemovingId(id);
         try {
             const token = localStorage.getItem('token');
@@ -58,11 +63,11 @@ const AdminRoleRequestsPage = () => {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setRequests((prev) => prev.filter((r) => r.request_id !== id));
-            setNotice(res.data?.message || t('pages.adminDeleteOk'));
+            toast.success(res.data?.message || t('pages.adminDeleteOk'));
             // Cập nhật badge "yêu cầu chờ duyệt" trên Header
             window.dispatchEvent(new Event('user:updated'));
         } catch (err) {
-            setError(err.response?.data?.message || t('pages.loadFail'));
+            toast.error(err.response?.data?.message || t('pages.loadFail'));
         } finally {
             setRemovingId(null);
             setConfirmDeleteId(null);
@@ -81,9 +86,6 @@ const AdminRoleRequestsPage = () => {
                 <ShieldCheck size={22} />
                 <span>{t('header.adminRoleRequests')}</span>
             </h1>
-
-            {error && <div className="role-alert err">{error}</div>}
-            {notice && <div className="role-alert ok">{notice}</div>}
 
             {/* Bộ lọc trạng thái */}
             <div className="issues-filters">

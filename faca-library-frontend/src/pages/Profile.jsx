@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save, Loader, User, Pencil, Languages, Link, ShieldCheck } from 'lucide-react';
 import { getMyProfile, updateMyProfile } from '../services/profileService';
+import { useToast } from '../components/common/ToastProvider';
 import { LANGUAGES } from '../i18n';
 import i18n from '../i18n';
 import '../styles/Profile.css';
@@ -63,6 +64,7 @@ const pickRole = (u = {}) => {
 
 const ProfilePage = () => {
     const { t } = useTranslation();
+    const toast = useToast();
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({ full_name: '', department: '', avatar_url: '', language: 'vi' });
     const [original, setOriginal] = useState({ full_name: '', department: '', avatar_url: '', language: 'vi' });
@@ -72,7 +74,6 @@ const ProfilePage = () => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState(null);
 
     // Tải dữ liệu profile ban đầu
     useEffect(() => {
@@ -106,12 +107,14 @@ const ProfilePage = () => {
                         applyLanguage(u.language || u.Language || 'vi');
                     } catch {}
                 }
-                setMessage({ type: 'error', text: 'Không thể tải thông tin.' });
+                toast.error('Không thể tải thông tin.');
             } finally {
                 setLoading(false);
             }
         };
         loadProfile();
+        // toast không đưa vào deps: useToast trả object mới mỗi render -> tránh refetch lặp
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Cập nhật preview ảnh khi avatar_url thay đổi
@@ -128,7 +131,6 @@ const ProfilePage = () => {
     const handleCancel = () => {
         setFormData({ ...original });
         applyLanguage(original.language);
-        setMessage(null);
         setIsEditing(false);
     };
 
@@ -146,11 +148,10 @@ const ProfilePage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.full_name.trim()) {
-            setMessage({ type: 'error', text: 'Họ và tên không được để trống.' });
+            toast.error('Họ và tên không được để trống.');
             return;
         }
         setSaving(true);
-        setMessage(null);
         try {
             const updated = await updateMyProfile({
                 full_name: formData.full_name.trim(),
@@ -171,9 +172,9 @@ const ProfilePage = () => {
             const nextRole = pickRole(updated);
             setUserRole((prev) => (nextRole.name ? nextRole : prev));
             setIsEditing(false);
-            setMessage({ type: 'success', text: 'Lưu thành công!' });
+            toast.success('Lưu thành công!');
         } catch (err) {
-            setMessage({ type: 'error', text: err?.response?.data?.message || 'Lỗi khi lưu.' });
+            toast.error(err?.response?.data?.message || 'Lỗi khi lưu.');
         } finally {
             setSaving(false);
         }
@@ -192,11 +193,6 @@ const ProfilePage = () => {
 
     return (
         <div className="profile-container">
-            {message && (
-                <div className={`profile-message profile-message-${message.type}`}>
-                    {message.text}
-                </div>
-            )}
             <div className="profile-card">
                 <h2 className="profile-title">{t('profile.title') || 'Hồ sơ cá nhân'}</h2>
                 {isEditing ? (

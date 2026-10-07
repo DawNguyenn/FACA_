@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Zap, Eye, Wrench, Layers, Loader, AlertCircle } from 'lucide-react';
+import { Zap, Eye, Wrench, Layers, AlertCircle } from 'lucide-react';
+import Skeleton from '../components/common/Skeleton';
+import { useToast } from '../components/common/ToastProvider';
 import '../styles/Pages.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -15,17 +17,16 @@ const CATEGORIES = [
 
 const IssuesPage = () => {
     const { t } = useTranslation();
+    const toast = useToast();
     const [searchParams, setSearchParams] = useSearchParams();
     const categoryId = searchParams.get('category_id');
 
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
         const loadIssues = async () => {
             setLoading(true);
-            setError(null);
             try {
                 const token = localStorage.getItem('token');
                 const query = categoryId ? `?category_id=${categoryId}` : '';
@@ -36,12 +37,15 @@ const IssuesPage = () => {
                 if (!res.ok || !data.success) throw new Error(data.message || 'Load failed');
                 setIssues(data.data || []);
             } catch (err) {
-                setError(err.message || t('pages.loadFail'));
+                setIssues([]);
+                toast.error(err.message || t('pages.loadFail'));
             } finally {
                 setLoading(false);
             }
         };
         loadIssues();
+        // `toast` không đưa vào deps: useToast trả object mới mỗi render -> tránh refetch lặp
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [categoryId, t]);
 
     const currentCat = CATEGORIES.find((c) => String(c.id) === categoryId);
@@ -75,17 +79,15 @@ const IssuesPage = () => {
             </div>
 
             {loading ? (
-                <div className="issues-loading">
-                    <Loader size={26} className="spin" />
-                    <span>{t('common.loading')}</span>
-                </div>
-            ) : error ? (
-                <div className="issues-empty">
-                    <AlertCircle size={22} />
-                    <span>{t('pages.loadFail')}</span>
+                /* Skeleton grid khi đang tải (thay cho spinner) */
+                <div className="issues-grid">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton key={`issue-skeleton-${i}`} variant="card" />
+                    ))}
                 </div>
             ) : issues.length === 0 ? (
                 <div className="issues-empty">
+                    <AlertCircle size={22} />
                     <span>{t('pages.emptyIssues')}</span>
                 </div>
             ) : (

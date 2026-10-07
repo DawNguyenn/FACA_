@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
@@ -59,6 +59,17 @@ export default function ToastProvider({ children }) {
         info: (msg, opts) => push('info', msg, opts),
         dismiss,
     };
+
+    // Lắng nghe sự kiện `app:toast` để các tầng NGOÀI React (Axios interceptor,
+    // service, apiClient) cũng bắn được toast — vd 401 "Phiên đăng nhập đã hết hạn".
+    useEffect(() => {
+        const handler = (event) => {
+            const { type = 'info', message, duration } = event.detail || {};
+            if (message) push(type, message, { duration });
+        };
+        window.addEventListener('app:toast', handler);
+        return () => window.removeEventListener('app:toast', handler);
+    }, [push]);
 
     return (
         <ToastContext.Provider value={api}>

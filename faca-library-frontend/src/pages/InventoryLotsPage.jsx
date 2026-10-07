@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Table2, AlertTriangle, Search } from 'lucide-react';
+import { Table2, AlertTriangle, Search } from 'lucide-react';
 import { getPaginatedInventory } from '../services/inventoryService';
+import Skeleton from '../components/common/Skeleton';
 import WarehousePagination from '../components/warehouse/WarehousePagination';
 
 export default function InventoryLotsPage() {
@@ -72,9 +73,20 @@ export default function InventoryLotsPage() {
       {/* Bảng dữ liệu */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-slate-500">
-            <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
-            Đang tải danh sách tồn kho...
+          /* Skeleton bảng khi đang tải (thay cho spinner) */
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  {['Lot Code', 'Dự án / Build', 'Vật liệu', 'Ngày nhận', 'Nhập', 'Lỗi IQA', 'Tồn kho', 'DRI'].map((h) => (
+                    <th key={h} className="px-4 py-3 font-semibold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                <Skeleton variant="table-row" rows={6} cols={8} />
+              </tbody>
+            </table>
           </div>
         ) : isError ? (
           <div className="py-12 text-center text-sm text-red-600">

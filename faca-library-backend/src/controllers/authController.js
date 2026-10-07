@@ -283,16 +283,48 @@ exports.forgotPassword = async (req, res) => {
                 VALUES (@user_id, @token_hash, DATEADD(MINUTE, 5, GETDATE()), GETDATE(), 0)
             `);
 
-        // Gửi email chứa mã OTP
+        // Gửi email chứa mã OTP — mailer.js tự động chọn chế độ:
+        //   - MAIL_DELIVERY_MODE=queue (mặc định): xếp hàng gửi bất đồng bộ + retry,
+        //     API trả response ngay nên không bao giờ treo/hang khi SMTP chậm.
+        //   - MAIL_DELIVERY_MODE=sync: gửi đồng bộ toàn bộ chuỗi fallback
+        //     (SMTP 587 → 465 → 2525 → REST API), thất bại tất cả mới trả 500.
         try {
             const { sendOtpEmail } = require('./mailer');
+            console.log(`📧 [ForgotPassword] Bắt đầu gửi OTP tới ${user.email} (user_id=${user.user_id})...`);
             const mailResult = await sendOtpEmail(user.email, otp);
-            // sendOtpEmail không throw mà trả về { success, message }
+            console.log('[ForgotPassword] Kết quả gửi OTP:', JSON.stringify({
+                success: mailResult && mailResult.success,
+                queued: mailResult && mailResult.queued,
+                jobId: mailResult && mailResult.jobId,
+                provider: mailResult && mailResult.provider,
+                // Chi tiết từng provider đã thử (mã lỗi/mã response — không lộ nội dung thư)
+                attempts: mailResult && mailResult.attempts
+                    ? mailResult.attempts.map((a) => ({
+                        provider: a.provider,
+                        code: a.code,
+                        responseCode: a.responseCode,
+                        ms: a.ms,
+                        message: a.message
+                    }))
+                    : undefined
+            }));
+
+            // sendOtpEmail không throw mà trả về { success, message, ... }
             if (mailResult && mailResult.success === false) {
+                console.error('❌ [ForgotPassword] Gửi OTP thất bại trên TẤT CẢ provider:',
+                    JSON.stringify(mailResult.attempts || [], null, 2));
                 throw new Error(mailResult.message || 'Gửi email thất bại');
             }
+            console.log(mailResult && mailResult.queued
+                ? `📧 [ForgotPassword] OTP đã vào hàng đợi (job #${mailResult.jobId})`
+                : `📧 [ForgotPassword] OTP đã gửi qua ${mailResult.provider}`);
         } catch (mailError) {
-            console.error('Lỗi gửi email đặt lại mật khẩu:', mailError);
+            console.error('❌ [ForgotPassword] Lỗi gửi email đặt lại mật khẩu:');
+            console.error(' • message:', mailError && mailError.message);
+            console.error(' • code:', mailError && mailError.code);
+            console.error(' • responseCode:', mailError && mailError.responseCode);
+            console.error(' • response:', mailError && mailError.response);
+            console.error(' • stack:', mailError && mailError.stack);
             return res.status(500).json({
                 success: false,
                 message: 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.'

@@ -1,25 +1,3 @@
-/* ============================================================
-   add_local_mirror_folder.sql — Thêm "thư mục mirror local" làm gốc quét CHÍNH
-   cho tính năng Slide Search, dùng khi OneDrive cloud-only không tải file về máy được.
-
-   BỐI CẢNH (xem docs/slide-search.md):
-     - 25/26 file .pptx nằm trong thư mục được chia sẻ của OneDrive người khác
-       (671445@sv.vnua.edu.vn) và đang ở trạng thái cloud-only (chỉ có placeholder).
-     - OneDrive trên máy không gắn được Cloud Files provider cho account vnua.edu.vn
-       → đọc file trả lỗi "The cloud file provider is not running" → không index được nội dung.
-     - Cách xử lý không phụ thuộc OneDrive: tải các file .pptx về 1 thư mục LOCAL bình thường
-       (giữ nguyên cấu trúc thư mục con) rồi khai báo thư mục đó thành 1 dòng SyncFolders.
-       Cron scanner sẽ index nội dung từ bản local, còn link nhúng iframe vẫn trỏ SharePoint
-       (nhờ cột sharepoint_url_prefix + bảng dbo.SyncFolderMappings đã có sẵn).
-
-   THỨ TỰ THỰC HIỆN:
-     1. Tải file .pptx từ OneDrive/SharePoint web về đúng thư mục mirror (xem @MirrorRoot).
-     2. Chạy script này (idempotent — chạy lại nhiều lần không nhân bản dữ liệu).
-     3. POST /api/slides/reindex  (hoặc chờ cron 15 phút) rồi kiểm tra lại Slide Search.
-
-   Chạy:
-     sqlcmd -S DAWNGUYENN -U sa -P <password> -d FACA_DB -i sql\add_local_mirror_folder.sql
-   ============================================================ */
 USE FACA_DB;
 GO
 

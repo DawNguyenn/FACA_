@@ -1,5 +1,13 @@
 const { sql, poolPromise } = require('../config/db');
-const { bulkSaveData } = require('../services/bulkSaveService');
+const { bulkSaveData, getTableColumnMeta, coerceValue, bulkColumnType } = require('../services/bulkSaveService');
+const {
+    getSheetMeta, upsertSheetMeta, buildSheetHeader, resolveUserName, toDateOrNull,
+} = require('../services/sheetMetaService');
+const {
+    writeAuditLogSafe, diffValues, listAuditLogs,
+    listAuditTables, getAuditSummary, getClientIp,
+    AUDIT_TABLE, ensureAuditLogsSchema,
+} = require('../services/auditLogService');
 
 // Số dòng tối đa nạp 1 lần cho Data Grid nhập liệu (?all=1)
 const GRID_MAX_ROWS = 5000;
@@ -324,11 +332,19 @@ const listStaging = (sourceKey) => async (req, res) => {
                 OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
             `);
 
+        // Thông tin header/metadata của sheet (tên file gốc, người nhập, thời gian, tổng bản ghi...)
+        const sheetHeader = await buildSheetHeader(pool, source);
+
         return res.json({
             success: true,
             source: sourceKey,
+            sourceKey: source.key,
+            tableName: source.table,
             columns: source.columns,
             customColumns: customCols,
+            sheetHeader,
+            // Tiêu đề dòng 1 của file Excel gốc (alias top-level cho tiện tích hợp)
+            sheetTitle: sheetHeader ? sheetHeader.sheetTitle : null,
             data: dataResult.recordset,
             pagination: {
                 page: safePage,
@@ -357,6 +373,15 @@ const listStaging = (sourceKey) => async (req, res) => {
 // ================================================================
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/; // chống SQL Injection qua tên cột
 
+/** Parse cột restored_indexes (JSON "[0,2]") của log bulk → mảng index dòng đã khôi phục. */
+const parseRestoredIdx = (v) => {
+    let d = v;
+    if (typeof d === 'string') {
+        try { d = JSON.parse(d); } catch { d = null; }
+    }
+    return Array.isArray(d) ? d.filter((n) => Number.isInteger(n) && n >= 0) : [];
+};
+
 // Lấy danh sách cột tùy chỉnh của 1 nguồn (từ bảng metadata)
 const getCustomColumns = async (pool, sourceKey) => {
     try {
@@ -370,6 +395,15 @@ const getCustomColumns = async (pool, sourceKey) => {
         return [];
     }
 };
+
+/** Thông tin người thực hiện cho nhật ký (id + tên hiển thị). */
+const auditActor = async (pool, user) => ({
+    changedBy: user && user.userId ? parseInt(user.userId, 10) : null,
+    changedByName: await resolveUserName(pool, user),
+});
+
+/** Tên bảng ghi vào nhật ký (bỏ tiền tố dbo. cho gọn & khớp với filter). */
+const auditTableName = (table) => String(table || '').replace(/^dbo\./i, '');
 
 /**
  * PUT /api/warehouse/:source/rows/:id
@@ -411,6 +445,13 @@ const updateStagingRowHandler = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Không có cột nào cần cập nhật.' });
         }
 
+        // Đọc giá trị CŨ của các cột sắp sửa (để lưu old/new vào nhật ký)
+        const oldCols = Object.keys(values).map((c) => `[${c}]`).join(', ');
+        const oldRes = await pool.request()
+            .input('RowId', sql.BigInt, rowId)
+            .query(`SELECT TOP 1 ${oldCols} FROM ${source.table} WHERE StagingID = @RowId;`);
+        const oldRow = oldRes.recordset[0] || null;
+
         const result = await req_.query(`
             UPDATE ${source.table}
             SET ${setParts.join(', ')}
@@ -421,6 +462,17 @@ const updateStagingRowHandler = async (req, res) => {
         if (!affected) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy dòng cần cập nhật.' });
         }
+
+        // ===== Nhật ký: lưu lại giá trị TRƯỚC & SAU khi sửa =====
+        await writeAuditLogSafe(pool, {
+            tableName: auditTableName(source.table),
+            recordId: String(rowId),
+            actionType: 'UPDATE',
+            ...(await auditActor(pool, req.user)),
+            changes: diffValues(oldRow || {}, values),
+            ipAddress: getClientIp(req),
+        });
+
         return res.json({ success: true, message: 'Đã cập nhật dòng dữ liệu.', updatedColumns: Object.keys(values) });
     } catch (error) {
         console.error(`Lỗi cập nhật dòng staging (${req.params.source} #${rowId}):`, error);
@@ -468,6 +520,17 @@ const insertStagingRowHandler = async (req, res) => {
             SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS NewStagingID;
         `);
         const newId = result.recordset[0].NewStagingID;
+
+        // ===== Nhật ký: ghi lại toàn bộ giá trị dòng mới =====
+        await writeAuditLogSafe(pool, {
+            tableName: auditTableName(source.table),
+            recordId: String(newId),
+            actionType: 'INSERT',
+            ...(await auditActor(pool, req.user)),
+            changes: values,
+            ipAddress: getClientIp(req),
+        });
+
         return res.status(201).json({ success: true, message: 'Đã thêm dòng mới.', StagingID: newId });
     } catch (error) {
         console.error(`Lỗi thêm dòng staging (${req.params.source}):`, error);
@@ -556,6 +619,12 @@ const deleteStagingRowHandler = async (req, res) => {
             return res.status(400).json({ success: false, message: 'StagingID không hợp lệ.' });
         }
 
+        // Đọc dòng sắp xoá để lưu vào nhật ký (lấy trước khi DELETE)
+        const oldRes = await pool.request()
+            .input('RowId', sql.BigInt, rowId)
+            .query(`SELECT TOP 1 * FROM ${source.table} WHERE StagingID = @RowId;`);
+        const oldRow = oldRes.recordset[0] || null;
+
         const result = await pool.request()
             .input('RowId', sql.BigInt, rowId)
             .query(`
@@ -567,6 +636,16 @@ const deleteStagingRowHandler = async (req, res) => {
         if (affected === 0) {
             return res.status(404).json({ success: false, message: `Không tìm thấy dòng có StagingID = ${rowId}.` });
         }
+        // ===== Nhật ký: lưu nguyên trạng dòng bị xóa =====
+        await writeAuditLogSafe(pool, {
+            tableName: auditTableName(source.table),
+            recordId: String(rowId),
+            actionType: 'DELETE',
+            ...(await auditActor(pool, req.user)),
+            changes: oldRow || {},
+            ipAddress: getClientIp(req),
+        });
+
         return res.json({ success: true, message: `Đã xóa dòng (StagingID = ${rowId}).` });
     } catch (error) {
         console.error(`Lỗi xóa dòng staging (${req.params.source}):`, error);
@@ -778,6 +857,55 @@ const bulkSaveHandler = async (req, res) => {
             mode,
         });
 
+        // Cập nhật metadata header: ai vừa nhập + lúc nào (giữ nguyên các trường khác đã có)
+        try {
+            const existing = await getSheetMeta(pool, source.key);
+            await upsertSheetMeta(pool, source.key, {
+                sheetTitle: existing?.SheetTitle ?? null,
+                fileName: existing?.FileName ?? null,
+                importedBy: await resolveUserName(pool, req.user),
+                importedAt: new Date(),
+                projectCode: existing?.ProjectCode ?? source.label,
+                buildVersion: existing?.BuildVersion ?? null,
+                status: existing?.Status || 'ACTIVE',
+                description: existing?.Description ?? null,
+            });
+        } catch (metaErr) {
+            console.warn('Cap nhat metadata header that bai (bo qua):', metaErr.message);
+        }
+
+        // ===== Nhật ký lưu hàng loạt: diff chi tiết từng dòng (row-level) =====
+        // bulkSaveData() đã snapshot DB TRƯỚC transaction và dựng sẵn auditDetail:
+        // { action_type, summary: { inserted_count, updated_count, deleted_count },
+        //   changes: [{ type: 'INSERT'|'UPDATE'|'DELETE', row_identifier, data|fields }] }.
+        // action_type tự phân loại: chỉ 1 loại -> INSERT/UPDATE/DELETE, hỗn hợp -> BULK_SAVE.
+        const auditDetail = result.auditDetail || {
+            action_type: 'BULK_UPDATE',
+            summary: {
+                mode,
+                inserted_count: result.rowsInserted,
+                updated_count: result.rowsUpdated,
+                deleted_count: result.rowsDeleted,
+                rowsInserted: result.rowsInserted,
+                rowsUpdated: result.rowsUpdated,
+                rowsDeleted: result.rowsDeleted,
+            },
+            changes: [],
+            truncated: false,
+        };
+        await writeAuditLogSafe(pool, {
+            tableName: auditTableName(source.table),
+            recordId: '*',
+            // Hon hop -> luu 'BULK_UPDATE' de hien badge 'Luu hang loat' + giu filter cu;
+            // summary trong changes_json van dem rowOps chinh xac cho tung loai dong.
+            actionType: (auditDetail.action_type || 'BULK_SAVE') === 'BULK_SAVE'
+                ? 'BULK_UPDATE'
+                : auditDetail.action_type,
+            ...(await auditActor(pool, req.user)),
+            changes: auditDetail,
+            ipAddress: getClientIp(req),
+        });
+
         let message;
         if (mode === 'replace') {
             message = `Đã cập nhật sheet "${source.label}": thay thế toàn bộ dữ liệu bằng ${result.rowsInserted} dòng.`;
@@ -803,6 +931,509 @@ const bulkSaveHandler = async (req, res) => {
             success: false,
             message: (status === 400 ? '' : 'Lưu dữ liệu thất bại: ') + error.message,
         });
+    }
+};
+
+// ================================================================
+//  Sheet Header / Metadata (thông tin file gốc hiển thị TRÊN ĐẦU bảng)
+// ================================================================
+
+/**
+ * GET /api/warehouse/sources/:source/meta
+ * Trả khối metadata header của sheet (dùng cho component SheetHeaderCard).
+ */
+const getSheetMetaHandler = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const source = await resolveSource(pool, req.params.source);
+        if (!source) return res.status(400).json({ success: false, message: 'Nguồn dữ liệu không hợp lệ.' });
+        const sheetHeader = await buildSheetHeader(pool, source);
+        return res.json({ success: true, sourceKey: source.key, tableName: source.table, sheetHeader, sheetTitle: sheetHeader.sheetTitle });
+    } catch (error) {
+        console.error(`Lỗi lấy metadata header (${req.params.source}):`, error);
+        return res.status(500).json({ success: false, message: 'Không lấy được thông tin header: ' + error.message });
+    }
+};
+
+/**
+ * PUT /api/warehouse/sources/:source/meta  (Admin/Warehouse)
+ * Cập nhật metadata header. Trường KHÔNG gửi lên sẽ giữ nguyên giá trị cũ.
+ */
+const updateSheetMetaHandler = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const source = await resolveSource(pool, req.params.source);
+        if (!source) return res.status(400).json({ success: false, message: 'Nguồn dữ liệu không hợp lệ.' });
+
+        const b = req.body || {};
+        const existing = await getSheetMeta(pool, source.key);
+        const pick = (v, fallback) => (v === undefined ? fallback : v);
+
+        await upsertSheetMeta(pool, source.key, {
+            sheetTitle: pick(b.sheetTitle, existing?.SheetTitle ?? null),
+            fileName: pick(b.fileName, existing?.FileName ?? null),
+            importedBy: pick(b.importedBy, await resolveUserName(pool, req.user)),
+            importedAt: b.importedAt !== undefined
+                ? toDateOrNull(b.importedAt)
+                : (existing?.ImportedAt ?? new Date()),
+            projectCode: pick(b.projectCode, existing?.ProjectCode ?? source.label),
+            buildVersion: pick(b.buildVersion, existing?.BuildVersion ?? null),
+            status: pick(b.status, existing?.Status || 'ACTIVE'),
+            description: pick(b.description, existing?.Description ?? null),
+        });
+
+        // ===== Nhật ký: thay đổi metadata header của sheet =====
+        const before = existing ? {
+            sheetTitle: existing.SheetTitle,
+            fileName: existing.FileName, importedBy: existing.ImportedBy,
+            projectCode: existing.ProjectCode, buildVersion: existing.BuildVersion,
+            status: existing.Status, description: existing.Description,
+        } : {};
+        const after = { ...before };
+        for (const key of ['sheetTitle', 'fileName', 'importedBy', 'projectCode', 'buildVersion', 'status', 'description']) {
+            if (b[key] !== undefined) after[key] = b[key];
+        }
+        await writeAuditLogSafe(pool, {
+            tableName: 'Staging_SheetMeta',
+            recordId: source.key,
+            actionType: 'UPDATE',
+            ...(await auditActor(pool, req.user)),
+            changes: diffValues(before, after),
+            ipAddress: getClientIp(req),
+        });
+
+        const sheetHeader = await buildSheetHeader(pool, source);
+        return res.json({
+            success: true,
+            message: `Đã lưu thông tin header cho sheet "${source.label}".`,
+            sheetHeader,
+        });
+    } catch (error) {
+        console.error(`Lỗi cập nhật metadata header (${req.params.source}):`, error);
+        return res.status(500).json({ success: false, message: 'Không lưu được thông tin header: ' + error.message });
+    }
+};
+
+// ================================================================
+//  Nhật ký & Lịch sử chỉnh sửa (Audit Log)
+// ================================================================
+
+/** Đọc bộ lọc từ query string. */
+const auditQueryFrom = (query = {}) => ({
+    tableName: query.tableName,
+    recordId: query.recordId,
+    actionType: query.actionType,
+    changedBy: query.changedBy,
+    from: query.from,
+    to: query.to,
+    page: query.page,
+    limit: query.limit,
+});
+
+/**
+ * GET /api/warehouse/audit-logs
+ * Danh sách nhật ký (lọc + phân trang) kèm thống kê nhanh theo hành động.
+ */
+const listAuditLogsHandler = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const q = auditQueryFrom(req.query);
+        const result = await listAuditLogs(pool, q);
+        const summary = await getAuditSummary(pool, q);
+        return res.json({ success: true, ...result, summary });
+    } catch (error) {
+        console.error('Lỗi lấy nhật ký dữ liệu:', error);
+        return res.status(500).json({ success: false, message: 'Không lấy được nhật ký: ' + error.message });
+    }
+};
+
+/** GET /api/warehouse/audit-logs/tables — danh sách bảng có phát sinh nhật ký. */
+const listAuditTablesHandler = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const tables = await listAuditTables(pool);
+        return res.json({ success: true, tables });
+    } catch (error) {
+        console.error('Lỗi lấy danh sách bảng audit:', error);
+        return res.status(500).json({ success: false, message: 'Không lấy được danh sách bảng: ' + error.message });
+    }
+};
+
+/**
+ * POST /api/warehouse/audit-logs/:id/restore
+ * Khôi phục dữ liệu từ 1 bản ghi nhật ký — CHỈ Admin (role_id=1):
+ *   - DELETE → chèn lại dòng đã xóa từ snapshot old_values (giữ nguyên StagingID).
+ *   - UPDATE → đưa các trường đã sửa về giá trị TRƯỚC đó (đọc lại giá trị hiện tại
+ *              để ghi vào log RESTORE đúng before/after).
+ * Sau khi thành công: ghi 1 log action RESTORE mới + đánh dấu log gốc restored_at
+ * (chống khôi phục 2 lần). Hỗ trợ 2 dạng: log ĐƠN theo StagingID (record_id số)
+ * và log BULK granular ({ summary, changes, truncated } — record_id dạng "*").
+ */
+const restoreAuditLogHandler = async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const auditId = parseInt(req.params.id, 10);
+        if (!Number.isInteger(auditId) || auditId <= 0) {
+            return res.status(400).json({ success: false, message: 'Mã nhật ký không hợp lệ.' });
+        }
+
+        await ensureAuditLogsSchema(pool);
+        const logRes = await pool.request()
+            .input('AuditId', sql.BigInt, auditId)
+            .query(`SELECT audit_id, table_name, record_id, action_type, changes_json, restored_at, restored_indexes
+                    FROM ${AUDIT_TABLE} WHERE audit_id = @AuditId;`);
+        const log = logRes.recordset[0];
+        if (!log) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy bản ghi nhật ký.' });
+        }
+        if (log.restored_at) {
+            return res.status(409).json({ success: false, message: 'Bản ghi này đã được khôi phục trước đó.' });
+        }
+        if (log.action_type !== 'DELETE' && log.action_type !== 'UPDATE') {
+            return res.status(400).json({ success: false, message: 'Chỉ có thể khôi phục thao tác Xóa hoặc Cập nhật.' });
+        }
+        // Parse payload gốc (diff UPDATE = mảng; snapshot DELETE = object;
+        //  bulk granular = { summary, changes, truncated })
+        let payload = log.changes_json;
+        if (typeof payload === 'string') {
+            try { payload = JSON.parse(payload); } catch { payload = null; }
+        }
+        if (!payload || typeof payload !== 'object') {
+            return res.status(400).json({ success: false, message: 'Dữ liệu nhật ký không đầy đủ hoặc đã bị cắt, không thể khôi phục tự động.' });
+        }
+        const isBulk = !Array.isArray(payload) && !!payload.summary && Array.isArray(payload.changes);
+
+        // Khôi phục theo TỪNG DÒNG (log bulk): body { changeIndex } — index trong changes[].
+        // Cho phép khôi phục dở dang: restored_indexes đánh dấu dòng đã xong,
+        // restored_at chỉ set khi đủ mọi dòng được khôi phục.
+        const rawIdx = req.body ? req.body.changeIndex : null;
+        const changeIndex = rawIdx === undefined || rawIdx === null || rawIdx === '' ? null : Number(rawIdx);
+        if (changeIndex !== null && !Number.isInteger(changeIndex)) {
+            return res.status(400).json({ success: false, message: 'changeIndex không hợp lệ.' });
+        }
+        if (changeIndex !== null && !isBulk) {
+            return res.status(400).json({ success: false, message: 'Chỉ nhật ký bulk hỗ trợ khôi phục theo dòng (changeIndex).' });
+        }
+
+        // Log đơn cần StagingID số; log bulk ({summary, changes}) không có record_id riêng
+        const recordId = parseInt(log.record_id, 10);
+        if (!isBulk && (!Number.isInteger(recordId) || recordId <= 0)) {
+            return res.status(400).json({ success: false, message: 'Log này không đủ dữ liệu để khôi phục (cần log đơn theo StagingID hoặc log bulk chi tiết).' });
+        }
+
+        // Tên bảng lấy từ nhật ký — chỉ chấp nhận identifier thuần + phải còn tồn tại
+        const tableName = String(log.table_name || '');
+        if (!IDENT_RE.test(tableName)) {
+            return res.status(400).json({ success: false, message: 'Tên bảng trong nhật ký không hợp lệ.' });
+        }
+        const tblRes = await pool.request()
+            .input('T', sql.NVarChar(128), tableName)
+            .query(`SELECT COUNT(*) AS Cnt FROM sys.tables
+                    WHERE name = @T AND SCHEMA_NAME(schema_id) = 'dbo';`);
+        if (tblRes.recordset[0].Cnt === 0) {
+            return res.status(404).json({ success: false, message: `Bảng "${tableName}" không còn tồn tại, không thể khôi phục.` });
+        }
+        const metaMap = await getTableColumnMeta(pool, tableName);
+        if (!metaMap.get('stagingid')) {
+            return res.status(400).json({ success: false, message: 'Bảng không có cột StagingID, không hỗ trợ khôi phục.' });
+        }
+
+        let restoreChanges; // payload ghi vào log RESTORE mới
+        let restoreMessage = null; // message riêng cho nhánh bulk
+        let bulkRestoredIdx = new Set(); // index dòng ĐÃ khôi phục trước đó (bulk)
+        let bulkTargetIdxs = []; // index dòng sẽ khôi phục trong LẦN này (bulk)
+
+        if (isBulk) {
+            // ===== NHÁNH BULK: payload { summary, changes, truncated } =====
+            const summary = payload.summary || {};
+            const changes = payload.changes;
+            if (payload.truncated) {
+                return res.status(409).json({ success: false, message: 'Nhật ký này đã bị cắt (quá 50 dòng/lần), dữ liệu không đủ để khôi phục toàn bộ.' });
+            }
+            if (String(summary.mode || '') === 'replace') {
+                return res.status(400).json({ success: false, message: 'Thao tác thay thế toàn bảng (replace/truncate) không thể khôi phục theo dòng.' });
+            }
+            const types = [...new Set(changes.map((c) => (c && c.type) || null).filter(Boolean))];
+            if (types.length !== 1 || types[0] !== log.action_type) {
+                return res.status(400).json({ success: false, message: 'Nhật ký thao tác hỗn hợp hoặc không khớp hành động, không thể khôi phục tự động.' });
+            }
+
+            // Các dòng ĐÃ khôi phục trước đó (restored_indexes) → không chèn/revert lần 2
+            bulkRestoredIdx = new Set(parseRestoredIdx(log.restored_indexes));
+            if (changeIndex !== null) {
+                if (changeIndex >= changes.length) {
+                    return res.status(400).json({ success: false, message: `changeIndex ${changeIndex} vượt quá số dòng trong nhật ký (${changes.length}).` });
+                }
+                if (bulkRestoredIdx.has(changeIndex)) {
+                    return res.status(409).json({ success: false, message: 'Dòng này đã được khôi phục trước đó.' });
+                }
+                bulkTargetIdxs = [changeIndex];
+            } else {
+                bulkTargetIdxs = changes.map((_, i) => i).filter((i) => !bulkRestoredIdx.has(i));
+                if (!bulkTargetIdxs.length) {
+                    return res.status(409).json({ success: false, message: 'Tất cả dòng trong bản ghi này đã được khôi phục trước đó.' });
+                }
+            }
+
+            if (log.action_type === 'DELETE') {
+                const deletedCount = Number(summary.deleted_count ?? summary.rowsDeleted ?? changes.length);
+                if (deletedCount !== changes.length) {
+                    return res.status(409).json({ success: false, message: `Nhật ký ghi ${deletedCount} dòng bị xóa nhưng chỉ còn ${changes.length} dòng chi tiết.` });
+                }
+                let restoredRows = 0;
+                const detailChanges = [];
+                for (const idx of bulkTargetIdxs) {
+                    const ch = changes[idx];
+                    const data = ch.data && typeof ch.data === 'object' ? ch.data : null;
+                    if (!data || !Object.keys(data).length) continue;
+                    const req_ = pool.request();
+                    const colList = [];
+                    const paramList = [];
+                    let hasIdentity = false;
+                    let i = 0;
+                    for (const [col, raw] of Object.entries(data)) {
+                        if (col === '…') continue; // placeholder "…(+N trường khác)" của audit
+                        if (!IDENT_RE.test(col)) continue;
+                        const meta = metaMap.get(col.toLowerCase());
+                        if (!meta) continue;
+                        req_.input(`v${i}`, bulkColumnType(meta), coerceValue(raw, meta));
+                        colList.push(`[${col}]`);
+                        paramList.push(`@v${i}`);
+                        if (meta.IsIdentity) hasIdentity = true;
+                        i += 1;
+                    }
+                    if (!i) continue;
+                    const insertSql = `INSERT INTO dbo.${tableName} (${colList.join(', ')}) VALUES (${paramList.join(', ')});`;
+                    if (hasIdentity) {
+                        await req_.query(`
+SET IDENTITY_INSERT dbo.${tableName} ON;
+BEGIN TRY
+    ${insertSql}
+END TRY
+BEGIN CATCH
+    SET IDENTITY_INSERT dbo.${tableName} OFF;
+    THROW;
+END CATCH;
+SET IDENTITY_INSERT dbo.${tableName} OFF;`);
+                    } else {
+                        await req_.query(insertSql);
+                    }
+                    restoredRows += 1;
+                    detailChanges.push({ type: 'DELETE', row_identifier: ch.row_identifier, data });
+                }
+                if (!restoredRows) {
+                    return res.status(400).json({ success: false, message: 'Không có cột nào trong snapshot bulk khớp với bảng hiện tại.' });
+                }
+                restoreChanges = {
+                    restored_audit_id: log.audit_id,
+                    mode: 'DELETE',
+                    summary: { mode: 'restore', inserted_count: restoredRows, rowsInserted: restoredRows },
+                    changes: detailChanges,
+                };
+                restoreMessage = `Đã khôi phục (chèn lại) ${restoredRows} dòng vào bảng ${tableName}. Dòng được tạo với dữ liệu tại thời điểm xóa (StagingID mới nếu nhật ký không giữ ID cũ).`;
+            } else {
+                // UPDATE bulk: revert từng field, StagingID lấy từ row_identifier dạng "Row #123 (...)"
+                let restoredRows = 0;
+                let restoredFields = 0;
+                const detailChanges = [];
+                for (const idx of bulkTargetIdxs) {
+                    const ch = changes[idx];
+                    const mm = String(ch.row_identifier || '').match(/#(\d+)/);
+                    const sid = mm ? parseInt(mm[1], 10) : NaN;
+                    if (!Number.isInteger(sid) || sid <= 0) {
+                        return res.status(400).json({ success: false, message: `Không xác định được StagingID từ dòng "${ch.row_identifier}" trong nhật ký.` });
+                    }
+                    const fields = [];
+                    for (const c of (Array.isArray(ch.fields) ? ch.fields : [])) {
+                        const f = c && c.field != null ? String(c.field) : '';
+                        if (!f || !IDENT_RE.test(f)) continue;
+                        const meta = metaMap.get(f.toLowerCase());
+                        if (!meta || meta.IsIdentity) continue;
+                        fields.push({ meta, field: f, old: c.old_value });
+                    }
+                    if (!fields.length) continue;
+                    const exist = await pool.request()
+                        .input('RowId', sql.BigInt, sid)
+                        .query(`SELECT COUNT(*) AS Cnt FROM dbo.${tableName} WHERE StagingID = @RowId;`);
+                    if (exist.recordset[0].Cnt === 0) {
+                        return res.status(404).json({ success: false, message: `Dòng StagingID = ${sid} không còn tồn tại (có thể đã bị xóa sau thao tác này).` });
+                    }
+                    // Đọc giá trị HIỆN TẠI trước khi revert (để ghi log RESTORE đúng before/after)
+                    const curRes = await pool.request()
+                        .input('RowId', sql.BigInt, sid)
+                        .query(`SELECT ${fields.map((f) => `[${f.field}]`).join(', ')} FROM dbo.${tableName} WHERE StagingID = @RowId;`);
+                    const currentRow = curRes.recordset[0] || {};
+                    const updReq = pool.request().input('RowId', sql.BigInt, sid);
+                    const setParts = fields.map((f, idx) => {
+                        updReq.input(`v${idx}`, bulkColumnType(f.meta), coerceValue(f.old, f.meta));
+                        return `[${f.field}] = @v${idx}`;
+                    });
+                    const upd = await updReq.query(`UPDATE dbo.${tableName} SET ${setParts.join(', ')} WHERE StagingID = @RowId;`);
+                    if (!upd.rowsAffected || upd.rowsAffected[0] === 0) continue;
+                    restoredRows += 1;
+                    restoredFields += fields.length;
+                    detailChanges.push({
+                        type: 'UPDATE',
+                        row_identifier: ch.row_identifier,
+                        fields: fields.map((f) => ({
+                            field: f.field,
+                            old_value: currentRow[f.field] === null || currentRow[f.field] === undefined ? '' : String(currentRow[f.field]),
+                            new_value: f.old === null || f.old === undefined ? '' : String(f.old),
+                        })),
+                    });
+                }
+                if (!restoredRows) {
+                    return res.status(400).json({ success: false, message: 'Không có trường nào trong nhật ký bulk khớp với bảng để khôi phục.' });
+                }
+                restoreChanges = {
+                    restored_audit_id: log.audit_id,
+                    mode: 'UPDATE',
+                    summary: { mode: 'restore', updated_count: restoredRows, rowsUpdated: restoredRows },
+                    changes: detailChanges,
+                };
+                restoreMessage = `Đã khôi phục ${restoredFields} trường của ${restoredRows} dòng trong bảng ${tableName}.`;
+            }
+            const skippedRows = changes.length - bulkTargetIdxs.length;
+            if (skippedRows > 0) {
+                restoreMessage += ` (Lần này chỉ xử lý ${bulkTargetIdxs.length}/${changes.length} dòng — ${skippedRows} dòng bỏ qua vì đã được khôi phục trước đó hoặc không được chọn.)`;
+            }
+        } else if (log.action_type === 'DELETE') {
+            if (Array.isArray(payload) || payload.summary || Object.keys(payload).length === 0) {
+                return res.status(400).json({ success: false, message: 'Snapshot dòng đã xóa không đúng định dạng, không thể khôi phục.' });
+            }
+            // Dòng đã tồn tại (được khôi phục/lập lại) thì không chèn lần 2
+            const dup = await pool.request()
+                .input('RowId', sql.BigInt, recordId)
+                .query(`SELECT COUNT(*) AS Cnt FROM dbo.${tableName} WHERE StagingID = @RowId;`);
+            if (dup.recordset[0].Cnt > 0) {
+                return res.status(409).json({ success: false, message: 'Dòng dữ liệu đã tồn tại trong bảng (có thể đã được khôi phục trước đó).' });
+            }
+
+            // Chỉ chèn các cột còn tồn tại (cột tùy chỉnh có thể đã bị xóa)
+            const req_ = pool.request();
+            const colList = [];
+            const paramList = [];
+            let hasIdentity = false;
+            let i = 0;
+            for (const [col, raw] of Object.entries(payload)) {
+                if (!IDENT_RE.test(col)) continue;
+                const meta = metaMap.get(col.toLowerCase());
+                if (!meta) continue;
+                req_.input(`v${i}`, bulkColumnType(meta), coerceValue(raw, meta));
+                colList.push(`[${col}]`);
+                paramList.push(`@v${i}`);
+                if (meta.IsIdentity) hasIdentity = true;
+                i += 1;
+            }
+            if (!i) {
+                return res.status(400).json({ success: false, message: 'Không còn cột nào trong snapshot khớp với bảng hiện tại.' });
+            }
+
+            const insertSql = `INSERT INTO dbo.${tableName} (${colList.join(', ')}) VALUES (${paramList.join(', ')});`;
+            if (hasIdentity) {
+                // Giữ nguyên StagingID → cần IDENTITY_INSERT; bọc TRY/CATCH để luôn OFF khi lỗi
+                await req_.query(`
+SET IDENTITY_INSERT dbo.${tableName} ON;
+BEGIN TRY
+    ${insertSql}
+END TRY
+BEGIN CATCH
+    SET IDENTITY_INSERT dbo.${tableName} OFF;
+    THROW;
+END CATCH;
+SET IDENTITY_INSERT dbo.${tableName} OFF;`);
+            } else {
+                await req_.query(insertSql);
+            }
+
+            restoreChanges = { restored_audit_id: log.audit_id, mode: 'DELETE', row: payload };
+        } else {
+            // UPDATE → đưa các trường về giá trị `old`
+            if (!Array.isArray(payload) || payload.length === 0) {
+                return res.status(400).json({ success: false, message: 'Log cập nhật không có danh sách diff để khôi phục.' });
+            }
+            const exist = await pool.request()
+                .input('RowId', sql.BigInt, recordId)
+                .query(`SELECT COUNT(*) AS Cnt FROM dbo.${tableName} WHERE StagingID = @RowId;`);
+            if (exist.recordset[0].Cnt === 0) {
+                return res.status(404).json({ success: false, message: 'Dòng dữ liệu không còn tồn tại (có thể đã bị xóa sau thao tác này).' });
+            }
+
+            // Lọc field hợp lệ + còn tồn tại (bỏ cột đã bị xóa / cột identity)
+            const fields = [];
+            for (const c of payload) {
+                const f = c && c.field != null ? String(c.field) : '';
+                if (!f || !IDENT_RE.test(f)) continue;
+                const meta = metaMap.get(f.toLowerCase());
+                if (!meta || meta.IsIdentity) continue;
+                fields.push({ meta, field: f, old: c.old });
+            }
+            if (!fields.length) {
+                return res.status(400).json({ success: false, message: 'Không còn trường nào trong log khớp với bảng để khôi phục.' });
+            }
+
+            // Đọc giá trị HIỆN TẠI trước khi revert (để ghi log RESTORE đúng before/after)
+            const curReq = pool.request().input('RowId', sql.BigInt, recordId);
+            const curSelect = fields.map((f) => `[${f.field}]`).join(', ');
+            const curRes = await curReq.query(`SELECT ${curSelect} FROM dbo.${tableName} WHERE StagingID = @RowId;`);
+            const currentRow = curRes.recordset[0] || {};
+
+            const updReq = pool.request().input('RowId', sql.BigInt, recordId);
+            const setParts = fields.map((f, idx) => {
+                updReq.input(`v${idx}`, bulkColumnType(f.meta), coerceValue(f.old, f.meta));
+                return `[${f.field}] = @v${idx}`;
+            });
+            const upd = await updReq.query(`UPDATE dbo.${tableName} SET ${setParts.join(', ')} WHERE StagingID = @RowId;`);
+            if (!upd.rowsAffected || upd.rowsAffected[0] === 0) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy dòng cần khôi phục.' });
+            }
+
+            restoreChanges = {
+                restored_audit_id: log.audit_id,
+                mode: 'UPDATE',
+                diff: fields.map((f) => ({
+                    field: f.field,
+                    old: currentRow[f.field] === null || currentRow[f.field] === undefined ? '' : String(currentRow[f.field]),
+                    new: f.old === null || f.old === undefined ? '' : String(f.old),
+                })),
+            };
+        }
+
+        // Ghi log RESTORE mới (không ném lỗi) + đánh dấu log gốc đã khôi phục
+        await writeAuditLogSafe(pool, {
+            tableName: log.table_name,
+            recordId: log.record_id,
+            actionType: 'RESTORE',
+            ...(await auditActor(pool, req.user)),
+            changes: restoreChanges,
+            ipAddress: getClientIp(req),
+        });
+        if (isBulk) {
+            // Bulk: đánh dấu TỪNG DÒNG đã khôi phục (restored_indexes) — restored_at
+            // chỉ set khi ĐỦ mọi dòng đã được khôi phục (hỗ trợ khôi phục dở dang).
+            const nextIdxs = [...new Set([...bulkRestoredIdx, ...bulkTargetIdxs])].sort((a, b) => a - b);
+            const allDone = nextIdxs.length >= payload.changes.length;
+            await pool.request()
+                .input('AuditId', sql.BigInt, auditId)
+                .input('RestIdx', sql.NVarChar(4000), JSON.stringify(nextIdxs))
+                .input('AllDone', sql.Bit, allDone)
+                .query(`UPDATE ${AUDIT_TABLE}
+                        SET restored_indexes = @RestIdx,
+                            restored_at = CASE WHEN @AllDone = 1 AND restored_at IS NULL THEN GETDATE() ELSE restored_at END
+                        WHERE audit_id = @AuditId;`);
+        } else {
+            await pool.request()
+                .input('AuditId', sql.BigInt, auditId)
+                .query(`UPDATE ${AUDIT_TABLE} SET restored_at = GETDATE() WHERE audit_id = @AuditId AND restored_at IS NULL;`);
+        }
+
+        const message = restoreMessage || (log.action_type === 'DELETE'
+            ? `Đã khôi phục (chèn lại) dòng StagingID = ${recordId} trong bảng ${tableName}.`
+            : `Đã khôi phục ${restoreChanges.diff.length} trường của dòng StagingID = ${recordId} trong bảng ${tableName}.`);
+        return res.json({ success: true, message, mode: log.action_type, auditId: log.audit_id });
+    } catch (error) {
+        console.error(`Lỗi khôi phục dữ liệu từ nhật ký #${req.params.id}:`, error);
+        return res.status(500).json({ success: false, message: 'Không khôi phục được dữ liệu: ' + error.message });
     }
 };
 
@@ -850,4 +1481,9 @@ module.exports = {
     deleteStagingRowHandler,
     deleteStagingColumnHandler,
     bulkSaveHandler,
+    getSheetMetaHandler,
+    updateSheetMetaHandler,
+    listAuditLogsHandler,
+    listAuditTablesHandler,
+    restoreAuditLogHandler,
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Loader2, Pencil, Plus, Save, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, History, Loader2, Pencil, Plus, Save, X } from 'lucide-react';
 import { displayValue, isDateColumn } from './warehouseConfig';
 
 /**
@@ -42,6 +42,7 @@ export default function WarehouseRowsTable({
     sortBy = '',
     sortDir = 'asc',
     onSort,
+    onShowHistory,
 }) {
     // Giữ bảng luôn mounted khi đang tải lại (sort / phân trang / tìm kiếm):
     // chỉ làm mờ nhẹ, KHÔNG unmount -> chiều cao trang không đổi -> không giật layout.
@@ -203,6 +204,15 @@ export default function WarehouseRowsTable({
                                                     <Pencil className="h-3.5 w-3.5" />
                                                 </button>
                                             ) : null)}
+
+                                            {/* Lịch sử chỉnh sửa của riêng bản ghi này */}
+                                            {!isEditing && onShowHistory && (
+                                                <button onClick={() => onShowHistory(row)}
+                                                    title="Xem lịch sử chỉnh sửa"
+                                                    className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+                                                    <History size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

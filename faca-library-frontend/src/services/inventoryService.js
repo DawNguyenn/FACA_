@@ -1,20 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-};
-const handleAuthError = (error) => {
-    if (error?.response?.status === 401) {
-        // Clear stale credentials
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        // Redirect to login page
-        window.location.href = '/login';
-    }
-    throw error;
-};
+import apiClient from './apiClient';
 
 /**
  * Upload an Excel file for background processing.
@@ -26,17 +10,10 @@ export const importExcelFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-        const response = await axios.post(`${API_URL}/inventory/import`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                ...getAuthHeaders(),
-            },
-        });
-        return response.data;
-    } catch (error) {
-        handleAuthError(error);
-    }
+    const { data } = await apiClient.post('/inventory/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
 };
 
 /**
@@ -46,14 +23,8 @@ export const importExcelFile = async (file) => {
  * @returns {Promise<{importId, fileName, status, totalRows, errorRows}>}
  */
 export const getImportStatus = async (importId) => {
-    try {
-        const response = await axios.get(`${API_URL}/inventory/import/${importId}/status`, {
-            headers: getAuthHeaders(),
-        });
-        return response.data;
-    } catch (error) {
-        handleAuthError(error);
-    }
+    const { data } = await apiClient.get(`/inventory/import/${importId}/status`);
+    return data;
 };
 
 /**
@@ -63,14 +34,8 @@ export const getImportStatus = async (importId) => {
  * @returns {Promise<{importId, errorCount, errors}>}
  */
 export const getImportErrors = async (importId) => {
-    try {
-        const response = await axios.get(`${API_URL}/inventory/import/${importId}/errors`, {
-            headers: getAuthHeaders(),
-        });
-        return response.data;
-    } catch (error) {
-        handleAuthError(error);
-    }
+    const { data } = await apiClient.get(`/inventory/import/${importId}/errors`);
+    return data;
 };
 
 /**
@@ -82,15 +47,8 @@ export const getImportErrors = async (importId) => {
  * @returns {Promise<Array>} inventory lots
  */
 export const getInventoryLots = async (params = {}) => {
-    try {
-        const response = await axios.get(`${API_URL}/inventory`, {
-            headers: getAuthHeaders(),
-            params,
-        });
-        return response.data.data || response.data || [];
-    } catch (error) {
-        handleAuthError(error);
-    }
+    const { data } = await apiClient.get('/inventory', { params });
+    return data.data || data || [];
 };
 
 /**
@@ -101,19 +59,14 @@ export const getInventoryLots = async (params = {}) => {
  * @returns {Promise<{success, data, pagination}>}
  */
 export const getPaginatedInventory = async (params = {}) => {
-    try {
-        const response = await axios.get(`${API_URL}/inventory/list`, {
-            headers: getAuthHeaders(),
-            params: {
-                page: params.page || 1,
-                limit: params.limit || 50,
-                search: params.search || '',
-            },
-        });
-        return response.data;
-    } catch (error) {
-        handleAuthError(error);
-    }
+    const { data } = await apiClient.get('/inventory/list', {
+        params: {
+            page: params.page || 1,
+            limit: params.limit || 50,
+            search: params.search || '',
+        },
+    });
+    return data;
 };
 
 export default {
